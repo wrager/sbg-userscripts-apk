@@ -1,0 +1,75 @@
+import java.util.Base64
+
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+}
+
+android {
+    namespace = "com.github.wrager.sbguserscripts"
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = "com.github.wrager.sbguserscripts"
+        minSdk = 24
+        targetSdk = 35
+        versionCode = 1
+        versionName = "1.0"
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        create("release") {
+            val storeBase64 = System.getenv("RELEASE_STORE")
+            if (storeBase64 != null) {
+                val storeFile = File(layout.buildDirectory.asFile.get(), "release.jks")
+                storeFile.parentFile.mkdirs()
+                storeFile.writeBytes(Base64.getDecoder().decode(storeBase64))
+                this.storeFile = storeFile
+            }
+            storePassword = System.getenv("RELEASE_STORE_PASSWORD")
+            keyAlias = "release"
+            keyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            val hasSigningEnv = System.getenv("RELEASE_STORE") != null
+            if (hasSigningEnv) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    kotlinOptions {
+        jvmTarget = "11"
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+}
+
+dependencies {
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
+    implementation(libs.material)
+    implementation(libs.androidx.constraintlayout)
+    implementation(libs.androidx.webkit)
+
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+}
