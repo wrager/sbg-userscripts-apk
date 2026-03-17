@@ -8,6 +8,7 @@ import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import com.github.wrager.sbguserscripts.bridge.ClipboardBridge
 import com.github.wrager.sbguserscripts.bridge.ShareBridge
+import com.github.wrager.sbguserscripts.webview.SbgWebViewClient
 
 class GameActivity : AppCompatActivity() {
 
@@ -44,6 +45,7 @@ class GameActivity : AppCompatActivity() {
 
         webView.addJavascriptInterface(ClipboardBridge(this), "Android")
         webView.addJavascriptInterface(ShareBridge(this), "__sbg_share")
+        webView.webViewClient = SbgWebViewClient()
 
         webView.webChromeClient = object : WebChromeClient() {
             override fun onGeolocationPermissionsShowPrompt(
