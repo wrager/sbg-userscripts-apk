@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">SBG Userscripts</string>
+    <string name="location_permission_denied">Геолокация отключена. Разрешите доступ в настройках.</string>
 </resources>

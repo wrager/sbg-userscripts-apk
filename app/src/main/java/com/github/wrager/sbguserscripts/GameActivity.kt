@@ -1,11 +1,16 @@
 package com.github.wrager.sbguserscripts
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
 import android.webkit.WebView
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -16,6 +21,27 @@ import com.github.wrager.sbguserscripts.webview.SbgWebViewClient
 class GameActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
+
+    // Pending geolocation callback while waiting for Android permission result
+    private var pendingGeolocationCallback: GeolocationPermissions.Callback? = null
+    private var pendingGeolocationOrigin: String? = null
+
+    private val locationPermissionRequest = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { permissions ->
+        val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+
+        if (granted) {
+            pendingGeolocationCallback?.invoke(pendingGeolocationOrigin, true, false)
+        } else {
+            pendingGeolocationCallback?.invoke(pendingGeolocationOrigin, false, false)
+            Toast.makeText(this, R.string.location_permission_denied, Toast.LENGTH_LONG).show()
+        }
+
+        pendingGeolocationCallback = null
+        pendingGeolocationOrigin = null
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -64,11 +90,27 @@ class GameActivity : AppCompatActivity() {
                 origin: String,
                 callback: GeolocationPermissions.Callback,
             ) {
-                // Runtime-разрешение добавлено в коммите 10; здесь разрешаем всегда
-                callback.invoke(origin, true, false)
+                if (hasLocationPermission()) {
+                    callback.invoke(origin, true, false)
+                } else {
+                    pendingGeolocationCallback = callback
+                    pendingGeolocationOrigin = origin
+                    locationPermissionRequest.launch(
+                        arrayOf(
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                            Manifest.permission.ACCESS_COARSE_LOCATION,
+                        ),
+                    )
+                }
             }
         }
     }
+
+    private fun hasLocationPermission(): Boolean =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
 
     private fun setupBackPressHandling() {
         onBackPressedDispatcher.addCallback(
