@@ -17,11 +17,12 @@ Android-приложение с WebView, загружающее игру SBG (`s
 ### Стартовый экран (LauncherActivity)
 
 - `LauncherViewModel` — управление состоянием: загрузка пресетов, тогглы, конфликты, добавление/удаление/обновление скриптов
-- `ScriptListAdapter` (ListAdapter + DiffUtil) — список скриптов с тогглами, кнопками удаления, предупреждениями о конфликтах
+- `ScriptListAdapter` (ListAdapter + DiffUtil) — список скриптов с тогглами, меню ⋮ (overflow), предупреждениями о конфликтах
 - `LauncherUiState` / `ScriptUiItem` — модель UI-состояния
 - `LauncherEvent` — одноразовые события (Toast-сообщения) через `Channel`
 - FAB «Добавить скрипт» → диалог ввода URL
 - Меню тулбара: «Обновить все», «Настройки»
+- Меню карточки скрипта (⋮): «Выбрать версию» (GitHub) / «Переустановить» (остальные), «Удалить» (не-пресеты)
 - Первый запуск: автоматическая загрузка всех пресетных скриптов
 
 ### Настройки (SettingsActivity)
@@ -76,7 +77,8 @@ Android-приложение с WebView, загружающее игру SBG (`s
 
 - `ScriptDownloader` — загрузка скрипта по URL, парсинг заголовка, сохранение
 - `ScriptUpdateChecker` — сравнение локальной и удалённой версий через `.meta.js`
-- `HttpFetcher` — интерфейс HTTP GET, реализация через `HttpURLConnection`
+- `GithubReleaseProvider` — загрузка списка релизов через GitHub Releases API для выбора версии
+- `HttpFetcher` — интерфейс HTTP GET (с поддержкой headers), реализация через `HttpURLConnection`
 
 ### Инжекция
 
@@ -132,12 +134,14 @@ app/src/main/java/com/github/wrager/sbguserscripts/
 │   │   ├── ScriptFileStorageImpl.kt  Реализация
 │   │   └── ScriptSerializer.kt    JSON-сериализация
 │   └── updater/
-│       ├── HttpFetcher.kt         Интерфейс HTTP
-│       ├── DefaultHttpFetcher.kt  Реализация
-│       ├── ScriptDownloader.kt    Загрузка скриптов
-│       ├── ScriptUpdateChecker.kt Проверка обновлений
-│       ├── ScriptDownloadResult.kt  Success | Failure
-│       └── ScriptUpdateResult.kt    UpdateAvailable | UpToDate | CheckFailed
+│       ├── HttpFetcher.kt            Интерфейс HTTP
+│       ├── DefaultHttpFetcher.kt     Реализация
+│       ├── ScriptDownloader.kt       Загрузка скриптов
+│       ├── ScriptUpdateChecker.kt    Проверка обновлений
+│       ├── ScriptDownloadResult.kt   Success | Failure
+│       ├── ScriptUpdateResult.kt     UpdateAvailable | UpToDate | CheckFailed
+│       ├── GithubRelease.kt          Модели GitHub-релиза и ассета
+│       └── GithubReleaseProvider.kt  Загрузка релизов через GitHub API
 ├── settings/
 │   ├── SettingsActivity.kt  Экран настроек
 │   └── SettingsFragment.kt  PreferenceFragmentCompat
