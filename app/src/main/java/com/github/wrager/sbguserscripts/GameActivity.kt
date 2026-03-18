@@ -81,8 +81,8 @@ class GameActivity : AppCompatActivity() {
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
         webView.settings.setGeolocationEnabled(true)
-        @Suppress("DEPRECATION") // MIXED_CONTENT_COMPATIBILITY_MODE нужен для ресурсов игры
-        webView.settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
+        webView.settings.javaScriptCanOpenWindowsAutomatically = true
+        webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
 
         webView.addJavascriptInterface(ClipboardBridge(this), "Android")
         webView.addJavascriptInterface(ShareBridge(this), "__sbg_share")
@@ -135,6 +135,6 @@ class GameActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val GAME_URL = "https://sbg-game.ru/app/"
+        private const val GAME_URL = "https://sbg-game.ru/"
     }
 }

@@ -36,6 +36,10 @@ Android APK для SBG (мобильная браузерная геолокац
 | СЛ / FW | Режим следования за игроком на карте |
 | ОРПЦ / OPS | Кнопка инвентаря в верхней панели |
 
+## Референсы
+
+- [anmiles/sbg](https://github.com/anmiles/sbg) — Anmiles SBG APK: референс для WebView-настроек, авторизации, работы с cookies
+
 ## Документация
 
 [docs/architecture.md](docs/architecture.md) · [docs/dev-principles.md](docs/dev-principles.md) · [docs/codestyle.md](docs/codestyle.md)

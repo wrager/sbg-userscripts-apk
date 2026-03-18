@@ -1,8 +1,6 @@
 package com.github.wrager.sbguserscripts.webview
 
 import android.app.Activity
-import android.content.Intent
-import android.net.Uri
 import android.webkit.SslErrorHandler
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
@@ -30,19 +28,13 @@ class SbgWebViewClient : WebViewClient() {
 
     override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
         val url = request?.url?.toString() ?: return false
-        return when {
-            url == "about:blank" -> {
-                val context = view?.context
-                if (context is Activity) context.finish()
-                true
-            }
-            url.contains("sbg-game.ru") -> false
-            else -> {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                view?.context?.startActivity(intent)
-                true
-            }
+        if (url.contains("window.close")) {
+            val context = view?.context
+            if (context is Activity) context.finish()
+            return true
         }
+        // Все URL (включая Telegram OAuth) загружаются в WebView
+        return false
     }
 
     private fun injectClipboardPolyfill(view: WebView?) {
