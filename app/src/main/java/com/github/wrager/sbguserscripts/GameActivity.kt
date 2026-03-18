@@ -3,6 +3,7 @@ package com.github.wrager.sbguserscripts
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -68,6 +69,12 @@ class GameActivity : AppCompatActivity() {
         webView.restoreState(savedInstanceState)
     }
 
+    private fun configureCookies() {
+        val cookieManager = CookieManager.getInstance()
+        cookieManager.setAcceptCookie(true)
+        cookieManager.setAcceptThirdPartyCookies(webView, true)
+    }
+
     private fun enableImmersiveMode() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         val controller = WindowInsetsControllerCompat(window, window.decorView)
@@ -77,12 +84,18 @@ class GameActivity : AppCompatActivity() {
     }
 
     private fun setupWebView() {
+        configureCookies()
+
         @Suppress("SetJavaScriptEnabled") // JS обязателен для работы SBG
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
         webView.settings.setGeolocationEnabled(true)
         webView.settings.javaScriptCanOpenWindowsAutomatically = true
         webView.settings.cacheMode = WebSettings.LOAD_NO_CACHE
+
+        if (BuildConfig.DEBUG) {
+            WebView.setWebContentsDebuggingEnabled(true)
+        }
 
         webView.addJavascriptInterface(ClipboardBridge(this), "Android")
         webView.addJavascriptInterface(ShareBridge(this), "__sbg_share")
