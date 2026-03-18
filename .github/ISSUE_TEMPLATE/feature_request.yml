@@ -1,0 +1,23 @@
+name: Запрос фичи
+description: Предложить новую функциональность
+labels: [enhancement]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Описание
+      description: Что хотелось бы добавить или изменить?
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Мотивация
+      description: Какую проблему это решает?
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Альтернативы
+      description: Рассматривали ли вы другие варианты?

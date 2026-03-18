@@ -1,0 +1,61 @@
+name: Баг-репорт
+description: Сообщить об ошибке в приложении
+labels: [bug]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Описание
+      description: Что произошло?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги воспроизведения
+      description: Как воспроизвести проблему?
+      placeholder: |
+        1. Открыть приложение
+        2. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемое поведение
+      description: Что должно было произойти?
+    validations:
+      required: true
+
+  - type: input
+    id: apk-version
+    attributes:
+      label: Версия APK
+      placeholder: "1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: android-version
+    attributes:
+      label: Версия Android
+      placeholder: "14"
+    validations:
+      required: true
+
+  - type: textarea
+    id: scripts
+    attributes:
+      label: Включённые скрипты
+      description: Какие юзерскрипты были активны?
+      placeholder: |
+        - SVP v0.3.0
+        - EUI v1.2.0
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Логи / скриншоты
+      description: Логи из logcat или скриншоты, если есть
