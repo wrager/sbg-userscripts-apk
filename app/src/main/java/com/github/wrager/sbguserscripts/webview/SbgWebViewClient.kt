@@ -1,16 +1,20 @@
 package com.github.wrager.sbguserscripts.webview
 
 import android.app.Activity
+import android.graphics.Bitmap
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import com.github.wrager.sbguserscripts.script.injector.ScriptInjector
 
-class SbgWebViewClient : WebViewClient() {
+class SbgWebViewClient(
+    private val scriptInjector: ScriptInjector,
+) : WebViewClient() {
 
-    override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+    override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
         super.onPageStarted(view, url, favicon)
-        if (url?.contains("sbg-game.ru/app") == true) {
-            injectClipboardPolyfill(view)
+        if (url?.contains("sbg-game.ru/app") == true && view != null) {
+            scriptInjector.inject(view)
         }
     }
 
@@ -23,27 +27,5 @@ class SbgWebViewClient : WebViewClient() {
         }
         // Все URL (включая Telegram OAuth) загружаются в WebView
         return false
-    }
-
-    private fun injectClipboardPolyfill(view: WebView?) {
-        val polyfill = """
-            (function() {
-                if (navigator.clipboard) return;
-                navigator.clipboard = {
-                    readText: function() {
-                        return new Promise(function(resolve) {
-                            resolve(Android.readText());
-                        });
-                    },
-                    writeText: function(text) {
-                        return new Promise(function(resolve) {
-                            Android.writeText(text);
-                            resolve();
-                        });
-                    }
-                };
-            })();
-        """.trimIndent()
-        view?.evaluateJavascript(polyfill) {}
     }
 }

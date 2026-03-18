@@ -20,7 +20,11 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.github.wrager.sbguserscripts.bridge.ClipboardBridge
 import com.github.wrager.sbguserscripts.bridge.ShareBridge
+import com.github.wrager.sbguserscripts.script.injector.ScriptInjector
+import com.github.wrager.sbguserscripts.script.storage.ScriptFileStorageImpl
+import com.github.wrager.sbguserscripts.script.storage.ScriptStorageImpl
 import com.github.wrager.sbguserscripts.webview.SbgWebViewClient
+import java.io.File
 
 class GameActivity : AppCompatActivity() {
 
@@ -101,7 +105,16 @@ class GameActivity : AppCompatActivity() {
 
         webView.addJavascriptInterface(ClipboardBridge(this), "Android")
         webView.addJavascriptInterface(ShareBridge(this), "__sbg_share")
-        webView.webViewClient = SbgWebViewClient()
+
+        val preferences = getSharedPreferences("scripts", MODE_PRIVATE)
+        val fileStorage = ScriptFileStorageImpl(File(filesDir, "scripts"))
+        val scriptStorage = ScriptStorageImpl(preferences, fileStorage)
+        val scriptInjector = ScriptInjector(
+            scriptStorage = scriptStorage,
+            applicationId = BuildConfig.APPLICATION_ID,
+            versionName = BuildConfig.VERSION_NAME,
+        )
+        webView.webViewClient = SbgWebViewClient(scriptInjector)
 
         webView.webChromeClient = object : WebChromeClient() {
             override fun onConsoleMessage(consoleMessage: ConsoleMessage): Boolean {
