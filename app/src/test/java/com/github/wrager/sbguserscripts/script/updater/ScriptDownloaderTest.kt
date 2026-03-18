@@ -1,0 +1,152 @@
+package com.github.wrager.sbguserscripts.script.updater
+
+import com.github.wrager.sbguserscripts.script.storage.ScriptStorage
+import io.mockk.Runs
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.just
+import io.mockk.mockk
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import java.io.IOException
+
+class ScriptDownloaderTest {
+
+    private lateinit var httpFetcher: HttpFetcher
+    private lateinit var scriptStorage: ScriptStorage
+    private lateinit var downloader: ScriptDownloader
+
+    @Before
+    fun setUp() {
+        httpFetcher = mockk()
+        scriptStorage = mockk()
+        downloader = ScriptDownloader(httpFetcher, scriptStorage)
+    }
+
+    @Test
+    fun `downloads and saves script with valid header`() = runTest {
+        coEvery { httpFetcher.fetch(any()) } returns SCRIPT_WITH_HEADER
+        coEvery { scriptStorage.save(any()) } just Runs
+
+        val result = downloader.download("https://example.com/script.user.js")
+
+        assertTrue(result is ScriptDownloadResult.Success)
+        val script = (result as ScriptDownloadResult.Success).script
+        assertEquals("Test Script", script.header.name)
+        assertEquals("1.0.0", script.header.version)
+        coVerify { scriptStorage.save(any()) }
+    }
+
+    @Test
+    fun `returns failure when header is missing`() = runTest {
+        coEvery { httpFetcher.fetch(any()) } returns "console.log('no header')"
+
+        val result = downloader.download("https://example.com/script.js")
+
+        assertTrue(result is ScriptDownloadResult.Failure)
+        assertEquals("https://example.com/script.js", (result as ScriptDownloadResult.Failure).url)
+    }
+
+    @Test
+    fun `returns failure when network error occurs`() = runTest {
+        coEvery { httpFetcher.fetch(any()) } throws IOException("Network error")
+
+        val result = downloader.download("https://example.com/script.user.js")
+
+        assertTrue(result is ScriptDownloadResult.Failure)
+    }
+
+    @Test
+    fun `sets isPreset flag correctly`() = runTest {
+        coEvery { httpFetcher.fetch(any()) } returns SCRIPT_WITH_HEADER
+        coEvery { scriptStorage.save(any()) } just Runs
+
+        val result = downloader.download("https://example.com/script.user.js", isPreset = true)
+
+        assertTrue(result is ScriptDownloadResult.Success)
+        assertTrue((result as ScriptDownloadResult.Success).script.isPreset)
+    }
+
+    @Test
+    fun `derives identifier from namespace and name`() = runTest {
+        coEvery { httpFetcher.fetch(any()) } returns SCRIPT_WITH_NAMESPACE
+        coEvery { scriptStorage.save(any()) } just Runs
+
+        val result = downloader.download("https://example.com/script.user.js")
+
+        assertTrue(result is ScriptDownloadResult.Success)
+        assertEquals(
+            "github.com/test/repo/Test Script",
+            (result as ScriptDownloadResult.Success).script.identifier.value,
+        )
+    }
+
+    @Test
+    fun `uses download URL from header as sourceUrl`() = runTest {
+        coEvery { httpFetcher.fetch(any()) } returns SCRIPT_WITH_DOWNLOAD_URL
+        coEvery { scriptStorage.save(any()) } just Runs
+
+        val result = downloader.download("https://example.com/script.user.js")
+
+        assertTrue(result is ScriptDownloadResult.Success)
+        assertEquals(
+            "https://example.com/download.user.js",
+            (result as ScriptDownloadResult.Success).script.sourceUrl,
+        )
+    }
+
+    @Test
+    fun `uses provided URL as fallback when header has no downloadUrl`() = runTest {
+        coEvery { httpFetcher.fetch(any()) } returns SCRIPT_WITH_HEADER
+        coEvery { scriptStorage.save(any()) } just Runs
+
+        val result = downloader.download("https://fallback.com/script.user.js")
+
+        assertTrue(result is ScriptDownloadResult.Success)
+        assertEquals(
+            "https://fallback.com/script.user.js",
+            (result as ScriptDownloadResult.Success).script.sourceUrl,
+        )
+    }
+
+    @Test
+    fun `new script is disabled by default`() = runTest {
+        coEvery { httpFetcher.fetch(any()) } returns SCRIPT_WITH_HEADER
+        coEvery { scriptStorage.save(any()) } just Runs
+
+        val result = downloader.download("https://example.com/script.user.js")
+
+        assertTrue(result is ScriptDownloadResult.Success)
+        assertFalse((result as ScriptDownloadResult.Success).script.enabled)
+    }
+
+    companion object {
+        private val SCRIPT_WITH_HEADER = """
+            // ==UserScript==
+            // @name Test Script
+            // @version 1.0.0
+            // ==/UserScript==
+            console.log('test');
+        """.trimIndent()
+
+        private val SCRIPT_WITH_NAMESPACE = """
+            // ==UserScript==
+            // @name Test Script
+            // @namespace https://github.com/test/repo
+            // @version 1.0.0
+            // ==/UserScript==
+        """.trimIndent()
+
+        private val SCRIPT_WITH_DOWNLOAD_URL = """
+            // ==UserScript==
+            // @name Test Script
+            // @version 1.0.0
+            // @downloadURL https://example.com/download.user.js
+            // ==/UserScript==
+        """.trimIndent()
+    }
+}

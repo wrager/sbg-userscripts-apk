@@ -11,6 +11,7 @@ junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 mockk = "1.13.12"
 json = "20250107"
+coroutines = "1.10.1"
 ktlint = "12.2.0"
 detekt = "1.23.7"
 
@@ -25,6 +26,9 @@ androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "j
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 json = { group = "org.json", name = "json", version.ref = "json" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
