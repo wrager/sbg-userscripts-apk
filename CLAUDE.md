@@ -15,10 +15,16 @@ Android APK для SBG (мобильная браузерная геолокац
 
 Если сборка падает — пофиксить и повторить.
 
+## Исследование
+
+- Перед новой фичей/правкой — **сначала искать в `refs/`** (Read/Grep). Если `refs/` нет — запустить `node scripts/fetchRefs.mjs`
+- При проблемах с WebView, API игры или платформой — **сначала проверить refs/anmiles/** (референсный APK), потом документация
+
 ## Код
 
 - Любое написание или изменение кода должно соответствовать docs/dev-principles.md и docs/codestyle.md
 - Любое изменение в архитектуре или в ключевых механизмах должно соответствовать docs/architecture.md
+- **Не угадывать** DOM-классы/ID игровых элементов — искать в refs/ или запросить HTML из DevTools у пользователя
 
 ## Терминология
 
@@ -38,7 +44,21 @@ Android APK для SBG (мобильная браузерная геолокац
 
 ## Референсы
 
-- [anmiles/sbg](https://github.com/anmiles/sbg) — Anmiles SBG APK: референс для WebView-настроек, авторизации, работы с cookies
+Загрузка: `node scripts/fetchRefs.mjs` → `refs/`
+
+| Референс | Путь в refs/ | Назначение |
+|---|---|---|
+| Anmiles APK | `anmiles/` | WebView-настройки, авторизация, JS-мосты, инжекция |
+| EUI sources | `eui/src/` | Исходники EUI для понимания API |
+| CUI sources | `cui/` | Исходники CUI |
+| EUI/CUI releases | `releases/` | Собранные .user.js |
+| OpenLayers | `ol/ol.js` | Картографическая библиотека игры |
+| Game HTML + script | `game/` | HTML страницы, скрипт игры |
+
+Ручной контент (не скачивается автоматически):
+- `refs/game/dom/body.html` — DOM страницы (из DevTools)
+- `refs/game/css/variables.css` — CSS custom properties (из DevTools)
+- `refs/screenshots/` — скриншоты UI
 
 ## Документация
 
