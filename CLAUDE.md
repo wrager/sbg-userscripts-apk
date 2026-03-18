@@ -56,8 +56,8 @@ Android APK для SBG (мобильная браузерная геолокац
 | CUI sources | `cui/` | Исходники CUI |
 | EUI/CUI releases | `releases/` | Собранные .user.js |
 | OpenLayers | `ol/ol.js` | Картографическая библиотека игры |
-| Login page HTML | `game/login.html` | Страница авторизации (`sbg-game.ru/login`) |
-| Game HTML + script | `game/index.html`, `game/script.js` | Страница игры (`sbg-game.ru/app`) |
+| Login page HTML | `game/login.html` | Страница авторизации (`sbg-game.ru/login`); редирект с `/app` для неавторизованных |
+| Game HTML + script | `game/index.html`, `game/script.js` | Страница игры (`sbg-game.ru/app`); стартовый URL приложения |
 
 Ручной контент (не скачивается автоматически; см. инструкции в stub-файлах):
 - `refs/game/dom/login-body.html` — DOM экрана авторизации (из DevTools)
