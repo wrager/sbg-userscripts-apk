@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import android.webkit.GeolocationPermissions
 import android.webkit.WebChromeClient
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -80,6 +81,8 @@ class GameActivity : AppCompatActivity() {
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
         webView.settings.setGeolocationEnabled(true)
+        @Suppress("DEPRECATION") // MIXED_CONTENT_COMPATIBILITY_MODE нужен для ресурсов игры
+        webView.settings.mixedContentMode = WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE
 
         webView.addJavascriptInterface(ClipboardBridge(this), "Android")
         webView.addJavascriptInterface(ShareBridge(this), "__sbg_share")
