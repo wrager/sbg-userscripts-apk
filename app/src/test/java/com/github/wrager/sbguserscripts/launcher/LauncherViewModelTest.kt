@@ -10,6 +10,8 @@ import com.github.wrager.sbguserscripts.script.preset.StaticConflictRules
 import com.github.wrager.sbguserscripts.script.storage.ScriptStorage
 import com.github.wrager.sbguserscripts.script.updater.ScriptDownloadResult
 import com.github.wrager.sbguserscripts.script.updater.ScriptDownloader
+import com.github.wrager.sbguserscripts.script.updater.ScriptUpdateChecker
+import com.github.wrager.sbguserscripts.script.updater.ScriptUpdateResult
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -38,6 +40,7 @@ class LauncherViewModelTest {
     private lateinit var scriptStorage: ScriptStorage
     private val conflictDetector = ConflictDetector(StaticConflictRules())
     private lateinit var downloader: ScriptDownloader
+    private lateinit var updateChecker: ScriptUpdateChecker
     private lateinit var appPreferences: SharedPreferences
     private lateinit var preferencesEditor: SharedPreferences.Editor
 
@@ -46,6 +49,7 @@ class LauncherViewModelTest {
         Dispatchers.setMain(testDispatcher)
         scriptStorage = mockk()
         downloader = mockk()
+        updateChecker = mockk()
         appPreferences = mockk()
         preferencesEditor = mockk()
 
@@ -170,10 +174,80 @@ class LauncherViewModelTest {
         assertTrue(svpItem.conflictNames.isEmpty())
     }
 
+    @Test
+    fun `addScript downloads and refreshes list`() = runTest {
+        every { appPreferences.getBoolean("presetsDownloaded", false) } returns true
+        val newScript = testScript(name = "New Script")
+        every { scriptStorage.getAll() } returns emptyList()
+        coEvery { downloader.download("https://example.com/script.user.js", isPreset = false) } returns
+            ScriptDownloadResult.Success(newScript)
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        every { scriptStorage.getAll() } returns listOf(newScript)
+        viewModel.addScript("https://example.com/script.user.js")
+        advanceUntilIdle()
+
+        coVerify { downloader.download("https://example.com/script.user.js", isPreset = false) }
+    }
+
+    @Test
+    fun `deleteScript removes script and refreshes list`() = runTest {
+        every { appPreferences.getBoolean("presetsDownloaded", false) } returns true
+        val script = testScript()
+        val scriptList = mutableListOf(script)
+        every { scriptStorage.getAll() } answers { scriptList.toList() }
+        every { scriptStorage.delete(script.identifier) } answers { scriptList.clear() }
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.deleteScript(script.identifier)
+        advanceUntilIdle()
+
+        verify { scriptStorage.delete(script.identifier) }
+        assertTrue(viewModel.uiState.value.scripts.isEmpty())
+    }
+
+    @Test
+    fun `updateAllScripts downloads updates when available`() = runTest {
+        every { appPreferences.getBoolean("presetsDownloaded", false) } returns true
+        val script = testScript(
+            identifier = ScriptIdentifier("test/updatable"),
+            version = "1.0.0",
+        )
+        every { scriptStorage.getAll() } returns listOf(script)
+        coEvery { updateChecker.checkAllForUpdates() } returns listOf(
+            ScriptUpdateResult.UpdateAvailable(
+                script.identifier,
+                com.github.wrager.sbguserscripts.script.model.ScriptVersion("1.0.0"),
+                com.github.wrager.sbguserscripts.script.model.ScriptVersion("2.0.0"),
+            ),
+        )
+        val updatedScript = testScript(
+            identifier = ScriptIdentifier("test/updatable"),
+            version = "2.0.0",
+        )
+        coEvery { downloader.download(any(), isPreset = false) } returns
+            ScriptDownloadResult.Success(updatedScript)
+        every { scriptStorage.setEnabled(any(), any()) } just Runs
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.updateAllScripts()
+        advanceUntilIdle()
+
+        coVerify { downloader.download(script.sourceUrl!!, isPreset = false) }
+        verify { scriptStorage.setEnabled(updatedScript.identifier, script.enabled) }
+    }
+
     private fun createViewModel() = LauncherViewModel(
         scriptStorage,
         conflictDetector,
         downloader,
+        updateChecker,
         appPreferences,
     )
 

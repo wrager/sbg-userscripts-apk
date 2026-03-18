@@ -12,20 +12,29 @@ import com.github.wrager.sbguserscripts.script.preset.PresetScripts
 import com.github.wrager.sbguserscripts.script.storage.ScriptStorage
 import com.github.wrager.sbguserscripts.script.updater.ScriptDownloadResult
 import com.github.wrager.sbguserscripts.script.updater.ScriptDownloader
+import com.github.wrager.sbguserscripts.script.updater.ScriptUpdateChecker
+import com.github.wrager.sbguserscripts.script.updater.ScriptUpdateResult
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 class LauncherViewModel(
     private val scriptStorage: ScriptStorage,
     private val conflictDetector: ConflictDetector,
     private val downloader: ScriptDownloader,
+    private val updateChecker: ScriptUpdateChecker,
     private val appPreferences: SharedPreferences,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LauncherUiState())
     val uiState: StateFlow<LauncherUiState> = _uiState.asStateFlow()
+
+    private val _events = Channel<LauncherEvent>(Channel.BUFFERED)
+    val events: Flow<LauncherEvent> = _events.receiveAsFlow()
 
     init {
         loadScripts()
@@ -61,6 +70,56 @@ class LauncherViewModel(
     fun toggleScript(identifier: ScriptIdentifier, enabled: Boolean) {
         scriptStorage.setEnabled(identifier, enabled)
         refreshScriptList()
+    }
+
+    fun addScript(url: String) {
+        viewModelScope.launch {
+            val result = downloader.download(url, isPreset = false)
+            when (result) {
+                is ScriptDownloadResult.Success -> {
+                    refreshScriptList()
+                    _events.send(LauncherEvent.ScriptAdded(result.script.header.name))
+                }
+                is ScriptDownloadResult.Failure -> {
+                    _events.send(
+                        LauncherEvent.ScriptAddFailed(
+                            result.error.message ?: result.error.toString(),
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    fun deleteScript(identifier: ScriptIdentifier) {
+        val script = scriptStorage.getAll().find { it.identifier == identifier } ?: return
+        scriptStorage.delete(identifier)
+        refreshScriptList()
+        viewModelScope.launch {
+            _events.send(LauncherEvent.ScriptDeleted(script.header.name))
+        }
+    }
+
+    fun updateAllScripts() {
+        viewModelScope.launch {
+            val results = updateChecker.checkAllForUpdates()
+            val updatedCount = results
+                .filterIsInstance<ScriptUpdateResult.UpdateAvailable>()
+                .count { updateResult -> applyUpdate(updateResult.identifier) }
+            refreshScriptList()
+            _events.send(LauncherEvent.UpdatesCompleted(updatedCount))
+        }
+    }
+
+    private suspend fun applyUpdate(identifier: ScriptIdentifier): Boolean {
+        val script = scriptStorage.getAll().find { it.identifier == identifier } ?: return false
+        val downloadUrl = script.sourceUrl ?: return false
+        val downloadResult = downloader.download(downloadUrl, isPreset = script.isPreset)
+        if (downloadResult is ScriptDownloadResult.Success) {
+            scriptStorage.setEnabled(downloadResult.script.identifier, script.enabled)
+            return true
+        }
+        return false
     }
 
     private fun refreshScriptList() {
@@ -107,6 +166,7 @@ class LauncherViewModel(
         private val scriptStorage: ScriptStorage,
         private val conflictDetector: ConflictDetector,
         private val downloader: ScriptDownloader,
+        private val updateChecker: ScriptUpdateChecker,
         private val appPreferences: SharedPreferences,
     ) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -115,6 +175,7 @@ class LauncherViewModel(
                 scriptStorage,
                 conflictDetector,
                 downloader,
+                updateChecker,
                 appPreferences,
             ) as T
         }

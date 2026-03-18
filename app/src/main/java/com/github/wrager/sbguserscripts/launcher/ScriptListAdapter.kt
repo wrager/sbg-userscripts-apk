@@ -3,6 +3,7 @@ package com.github.wrager.sbguserscripts.launcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -13,6 +14,7 @@ import com.google.android.material.materialswitch.MaterialSwitch
 
 class ScriptListAdapter(
     private val onToggleChanged: (ScriptIdentifier, Boolean) -> Unit,
+    private val onDeleteClick: (ScriptIdentifier) -> Unit,
 ) : ListAdapter<ScriptUiItem, ScriptListAdapter.ScriptViewHolder>(DIFF_CALLBACK) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ScriptViewHolder {
@@ -29,6 +31,7 @@ class ScriptListAdapter(
         private val nameText: TextView = itemView.findViewById(R.id.scriptName)
         private val detailsText: TextView = itemView.findViewById(R.id.scriptDetails)
         private val toggle: MaterialSwitch = itemView.findViewById(R.id.scriptToggle)
+        private val deleteButton: ImageButton = itemView.findViewById(R.id.deleteButton)
         private val conflictWarning: TextView = itemView.findViewById(R.id.conflictWarning)
 
         fun bind(item: ScriptUiItem) {
@@ -45,6 +48,11 @@ class ScriptListAdapter(
             toggle.isChecked = item.enabled
             toggle.setOnCheckedChangeListener { _, isChecked ->
                 onToggleChanged(item.identifier, isChecked)
+            }
+
+            deleteButton.visibility = if (item.isPreset) View.GONE else View.VISIBLE
+            deleteButton.setOnClickListener {
+                onDeleteClick(item.identifier)
             }
 
             if (item.conflictNames.isNotEmpty()) {

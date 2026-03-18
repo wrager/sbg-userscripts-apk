@@ -16,3 +16,10 @@ data class ScriptUiItem(
     val isPreset: Boolean,
     val conflictNames: List<String>,
 )
+
+sealed class LauncherEvent {
+    data class ScriptAdded(val scriptName: String) : LauncherEvent()
+    data class ScriptAddFailed(val errorMessage: String) : LauncherEvent()
+    data class ScriptDeleted(val scriptName: String) : LauncherEvent()
+    data class UpdatesCompleted(val updatedCount: Int) : LauncherEvent()
+}
