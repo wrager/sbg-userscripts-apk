@@ -2,7 +2,6 @@ import java.util.Base64
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ktlint)
     alias(libs.plugins.detekt)
 }
@@ -55,13 +54,13 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
 
-    kotlinOptions {
-        jvmTarget = "11"
-    }
-
     buildFeatures {
         buildConfig = true
     }
+}
+
+kotlin {
+    jvmToolchain(17)
 }
 
 detekt {
