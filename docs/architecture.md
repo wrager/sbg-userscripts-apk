@@ -8,8 +8,32 @@ Android-приложение с WebView, загружающее игру SBG (`s
 
 | Activity | Назначение |
 |---|---|
-| `MainActivity` | LAUNCHER. Запускает `GameActivity` |
+| `LauncherActivity` | LAUNCHER. Список скриптов с тогглами, конфликты, кнопка «Запустить» |
 | `GameActivity` | WebView с игрой, инжекция скриптов, immersive mode |
+| `SettingsActivity` | Экран настроек (PreferenceFragmentCompat) |
+
+## UI-архитектура
+
+### Стартовый экран (LauncherActivity)
+
+- `LauncherViewModel` — управление состоянием: загрузка пресетов, тогглы, конфликты, добавление/удаление/обновление скриптов
+- `ScriptListAdapter` (ListAdapter + DiffUtil) — список скриптов с тогглами, кнопками удаления, предупреждениями о конфликтах
+- `LauncherUiState` / `ScriptUiItem` — модель UI-состояния
+- `LauncherEvent` — одноразовые события (Toast-сообщения) через `Channel`
+- FAB «Добавить скрипт» → диалог ввода URL
+- Меню тулбара: «Обновить все», «Настройки»
+- Первый запуск: автоматическая загрузка всех пресетных скриптов
+
+### Настройки (SettingsActivity)
+
+- `SettingsFragment` (PreferenceFragmentCompat) — автообновление, версия, баг-репорт
+- Настройки хранятся в `SharedPreferences` (по умолчанию `_preferences`)
+
+### Локализация
+
+- Английский — язык по умолчанию (`values/strings.xml`)
+- Русский — `values-ru/strings.xml`
+- Язык определяется по системным настройкам устройства
 
 ## WebView
 
@@ -64,20 +88,25 @@ Android-приложение с WebView, загружающее игру SBG (`s
 
 ## Флоу запуска
 
-1. `MainActivity` → `GameActivity`
-2. Первый запуск: автоматическая загрузка предустановленных скриптов
-3. `SbgWebViewClient` загружает `sbg-game.ru/app`, инжектирует включённые скрипты
-4. JS-бриджи доступны скриптам через `Android.*` и `__sbg_share.*`
+1. `LauncherActivity` — список скриптов с тогглами и предупреждениями о конфликтах
+2. Первый запуск: автоматическая загрузка предустановленных скриптов (SVP включён по умолчанию)
+3. Пользователь настраивает скрипты → нажимает «Запустить» → `GameActivity`
+4. `SbgWebViewClient` загружает `sbg-game.ru/app`, инжектирует включённые скрипты
+5. JS-бриджи доступны скриптам через `Android.*` и `__sbg_share.*`
 
 ## Структура проекта
 
 ```
 app/src/main/java/com/github/wrager/sbguserscripts/
-├── MainActivity.kt          Launcher → GameActivity
 ├── GameActivity.kt          WebView, immersive mode, geolocation
 ├── bridge/
 │   ├── ClipboardBridge.kt   Полифил navigator.clipboard
 │   └── ShareBridge.kt       Открытие URL
+├── launcher/
+│   ├── LauncherActivity.kt    Стартовый экран, LAUNCHER
+│   ├── LauncherViewModel.kt   Состояние, бизнес-логика
+│   ├── LauncherUiState.kt     Модели UI-состояния и событий
+│   └── ScriptListAdapter.kt   RecyclerView-адаптер
 ├── script/
 │   ├── injector/
 │   │   ├── ScriptInjector.kt      Генерация JS для инжекции
@@ -109,6 +138,9 @@ app/src/main/java/com/github/wrager/sbguserscripts/
 │       ├── ScriptUpdateChecker.kt Проверка обновлений
 │       ├── ScriptDownloadResult.kt  Success | Failure
 │       └── ScriptUpdateResult.kt    UpdateAvailable | UpToDate | CheckFailed
+├── settings/
+│   ├── SettingsActivity.kt  Экран настроек
+│   └── SettingsFragment.kt  PreferenceFragmentCompat
 └── webview/
     └── SbgWebViewClient.kt  Загрузка страниц, инжекция, close()
 ```
