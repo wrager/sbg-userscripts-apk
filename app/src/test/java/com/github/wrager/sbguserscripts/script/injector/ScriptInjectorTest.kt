@@ -9,6 +9,7 @@ import com.github.wrager.sbguserscripts.script.storage.ScriptStorage
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -94,7 +95,7 @@ class ScriptInjectorTest {
     }
 
     @Test
-    fun `inject calls evaluateJavascript for each enabled script`() {
+    fun `inject calls evaluateJavascript for each enabled script plus error collection`() {
         every { scriptStorage.getEnabled() } returns listOf(
             createTestScript("script-a", "Script A", "code_a"),
             createTestScript("script-b", "Script B", "code_b"),
@@ -102,8 +103,8 @@ class ScriptInjectorTest {
 
         injector.inject(webView)
 
-        // globals + polyfill + 2 скрипта = 4 вызова
-        verify(exactly = 4) {
+        // globals + polyfill + 2 скрипта + 1 collectErrors = 5 вызовов
+        verify(exactly = 5) {
             webView.evaluateJavascript(any(), any<ValueCallback<String>>())
         }
     }
@@ -134,7 +135,7 @@ class ScriptInjectorTest {
     }
 
     @Test
-    fun `inject wraps each script in IIFE with try-catch`() {
+    fun `inject wraps each script in IIFE with try-catch and error collection`() {
         every { scriptStorage.getEnabled() } returns listOf(
             createTestScript("test/id", "My Script", "alert(1);"),
         )
@@ -151,6 +152,7 @@ class ScriptInjectorTest {
         assertTrue(scriptCall.contains("try {"))
         assertTrue(scriptCall.contains("alert(1);"))
         assertTrue(scriptCall.contains("} catch (error) {"))
+        assertTrue(scriptCall.contains("window.__sbg_injection_errors"))
     }
 
     @Test
@@ -183,6 +185,73 @@ class ScriptInjectorTest {
         val allInjected = capturedScripts.joinToString()
         assertTrue(allInjected.contains("enabled_code"))
         assertFalse(allInjected.contains("disabled_code"))
+    }
+
+    @Test
+    fun `buildResults returns Success for all scripts when no errors`() {
+        val scripts = listOf(
+            createTestScript("id-a", "Script A", "code"),
+            createTestScript("id-b", "Script B", "code"),
+        )
+
+        val results = ScriptInjector.buildResults(scripts, "\"[]\"")
+
+        assertTrue(results.all { it is InjectionResult.Success })
+        assertEquals(2, results.size)
+    }
+
+    @Test
+    fun `buildResults returns ScriptError when error array contains entries`() {
+        val scripts = listOf(
+            createTestScript("id-a", "Script A", "code"),
+            createTestScript("id-b", "Script B", "code"),
+        )
+        val errorsJson =
+            "\"[{\\\"script\\\":\\\"Script A\\\"," +
+                "\\\"error\\\":\\\"ReferenceError: x is not defined\\\"}]\""
+
+        val results = ScriptInjector.buildResults(scripts, errorsJson)
+
+        val errorResult = results
+            .filterIsInstance<InjectionResult.ScriptError>()
+            .first()
+        assertEquals(ScriptIdentifier("id-a"), errorResult.identifier)
+        assertEquals("ReferenceError: x is not defined", errorResult.errorMessage)
+
+        val successResult = results
+            .filterIsInstance<InjectionResult.Success>()
+            .first()
+        assertEquals(ScriptIdentifier("id-b"), successResult.identifier)
+    }
+
+    @Test
+    fun `buildResults returns all Success when errors json is null`() {
+        val scripts = listOf(createTestScript("id", "Script", "code"))
+
+        val results = ScriptInjector.buildResults(scripts, null)
+
+        assertEquals(1, results.size)
+        assertTrue(results[0] is InjectionResult.Success)
+    }
+
+    @Test
+    fun `buildResults returns all Success when errors json is malformed`() {
+        val scripts = listOf(createTestScript("id", "Script", "code"))
+
+        val results = ScriptInjector.buildResults(scripts, "not json")
+
+        assertEquals(1, results.size)
+        assertTrue(results[0] is InjectionResult.Success)
+    }
+
+    @Test
+    fun `inject callback receives empty list when no scripts enabled`() {
+        every { scriptStorage.getEnabled() } returns emptyList()
+        var callbackResults: List<InjectionResult>? = null
+
+        injector.inject(webView) { callbackResults = it }
+
+        assertEquals(emptyList<InjectionResult>(), callbackResults)
     }
 
     private fun createTestScript(
