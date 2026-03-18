@@ -2,4 +2,7 @@
     <string name="app_name">SBG Userscripts</string>
     <string name="location_permission_denied">Геолокация отключена. Разрешите доступ в настройках.</string>
     <string name="script_injection_error">Ошибка загрузки скриптов: %s</string>
+    <string name="launch_game">Запустить</string>
+    <string name="no_scripts">Нет установленных скриптов</string>
+    <string name="conflict_warning">Конфликтует с: %s</string>
 </resources>

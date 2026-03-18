@@ -21,17 +21,10 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.github.wrager.sbguserscripts.bridge.ClipboardBridge
 import com.github.wrager.sbguserscripts.bridge.ShareBridge
 import com.github.wrager.sbguserscripts.script.injector.ScriptInjector
-import com.github.wrager.sbguserscripts.script.preset.PresetScripts
 import com.github.wrager.sbguserscripts.script.storage.ScriptFileStorageImpl
 import com.github.wrager.sbguserscripts.script.storage.ScriptStorage
 import com.github.wrager.sbguserscripts.script.storage.ScriptStorageImpl
-import com.github.wrager.sbguserscripts.script.updater.DefaultHttpFetcher
-import com.github.wrager.sbguserscripts.script.updater.ScriptDownloadResult
-import com.github.wrager.sbguserscripts.script.updater.ScriptDownloader
 import com.github.wrager.sbguserscripts.webview.SbgWebViewClient
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import java.io.File
 
 class GameActivity : AppCompatActivity() {
@@ -70,7 +63,7 @@ class GameActivity : AppCompatActivity() {
         setupBackPressHandling()
 
         if (savedInstanceState == null) {
-            ensurePresetScriptsLoaded()
+            webView.loadUrl(GAME_URL)
         }
     }
 
@@ -184,31 +177,6 @@ class GameActivity : AppCompatActivity() {
                 }
             },
         )
-    }
-
-    /**
-     * Загружает SVP при первом запуске, затем открывает игру.
-     * Временная мера до появления SplashActivity с UI управления скриптами.
-     */
-    private fun ensurePresetScriptsLoaded() {
-        val svp = PresetScripts.SVP
-        if (scriptStorage.getAll().any { it.identifier == svp.identifier }) {
-            webView.loadUrl(GAME_URL)
-            return
-        }
-
-        val downloader = ScriptDownloader(DefaultHttpFetcher(), scriptStorage)
-        CoroutineScope(Dispatchers.Main).launch {
-            val result = downloader.download(svp.downloadUrl, isPreset = true)
-            when (result) {
-                is ScriptDownloadResult.Success -> {
-                    scriptStorage.setEnabled(result.script.identifier, true)
-                    Log.i(LOG_TAG, "Загружен ${svp.displayName}: ${result.script.header.version}")
-                }
-                else -> Log.e(LOG_TAG, "Не удалось загрузить ${svp.displayName}: $result")
-            }
-            webView.loadUrl(GAME_URL)
-        }
     }
 
     companion object {

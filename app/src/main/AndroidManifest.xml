@@ -17,7 +17,7 @@
         android:theme="@style/Theme.SBGUserscripts"
         android:usesCleartextTraffic="true">
         <activity
-            android:name=".MainActivity"
+            android:name=".launcher.LauncherActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.SBGUserscripts">
