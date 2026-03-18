@@ -2,30 +2,31 @@
 
 ## Обзор
 
-Android-приложение с WebView, загружающее игру SBG (`sbg-game.ru/app/`) и инжектирующее пользовательские скрипты. Один APK заменяет несколько сборок Anmiles SBG APK, добавляя менеджер скриптов, кеширование ассетов и проверку обновлений.
+Android-приложение с WebView, загружающее игру SBG (`sbg-game.ru/app/`) и инжектирующее пользовательские скрипты. Один APK заменяет несколько сборок Anmiles SBG APK, добавляя менеджер скриптов с поддержкой предустановленных скриптов, конфликтов и обновлений.
 
 ## Activities
 
 | Activity | Назначение |
 |---|---|
-| `SplashActivity` | LAUNCHER. Список скриптов с тогглами, кнопка «Запустить» |
+| `MainActivity` | LAUNCHER. Запускает `GameActivity` |
 | `GameActivity` | WebView с игрой, инжекция скриптов, immersive mode |
-| `ScriptManagerActivity` | Управление скриптами: добавить/удалить/обновить |
-| `AppSettingsActivity` | Настройки приложения |
 
 ## WebView
 
-- `SbgWebViewClient` — перехват загрузки страниц, инжекция скриптов в `onPageStarted`, перехват ресурсов для кеширования в `shouldInterceptRequest`
+- `SbgWebViewClient` — перехват загрузки страниц, инжекция скриптов, обработка `window.close()`
 - JS-бриджи: `ClipboardBridge` (полифил `navigator.clipboard`), `ShareBridge` (открытие URL)
 - Инжекция только на `sbg-game.ru/app*`
+- Geolocation permissions — запрос и выдача runtime-разрешений
 
 ## Менеджер скриптов
 
 ### Модель данных
 
 - `UserScript` — скрипт: идентификатор, заголовок (Tampermonkey-формат), URL, контент, enabled, isPreset
-- `ScriptHeader` — парсинг `// ==UserScript==` блока
-- `ScriptConflict` — правила конфликтов между скриптами
+- `ScriptHeader` — парсинг `// ==UserScript==` блока (@name, @version, @match, @run-at и др.)
+- `ScriptIdentifier` — inline value class, уникальный идентификатор скрипта
+- `ScriptVersion` — семантическое сравнение версий
+- `ScriptConflict` — описание несовместимости между скриптами
 
 ### Предустановленные скрипты
 
@@ -36,54 +37,78 @@ Android-приложение с WebView, загружающее игру SBG (`s
 
 ### Правила конфликтов
 
-- SVP конфликтует с: EUI, CUI, Anmiles script
+- SVP конфликтует с: EUI, CUI, Anmiles script (модификация UI)
 - EUI, CUI, Anmiles script — совместимы между собой
-- Архитектура поддерживает более сложные правила в будущем
+- `ConflictDetector` проверяет кандидата против включённых скриптов
+- `StaticConflictRules` — жёстко заданные правила
 
-### Порядок инжекции
+### Хранение скриптов
 
-1. Глобальные переменные
+- **Метаданные** → SharedPreferences (`scripts.xml`), сериализация через `ScriptSerializer`
+- **Контент** → `filesDir/scripts/*.user.js` через `ScriptFileStorage`
+- `ScriptStorage` — интерфейс: getAll, save, delete, getEnabled, setEnabled
+
+### Загрузка и обновление
+
+- `ScriptDownloader` — загрузка скрипта по URL, парсинг заголовка, сохранение
+- `ScriptUpdateChecker` — сравнение локальной и удалённой версий через `.meta.js`
+- `HttpFetcher` — интерфейс HTTP GET, реализация через `HttpURLConnection`
+
+### Инжекция
+
+1. Глобальные переменные (`__sbg_local`, `__sbg_package`, `__sbg_package_version`)
 2. Clipboard-полифил
 3. Скрипты (каждый в IIFE, обёрнут в try-catch)
-
-## Кеширование
-
-- `shouldInterceptRequest` + дисковый кеш
-- API-вызовы (`/api/*`) — не кешировать
-- Статика (JS, CSS, изображения) — кешировать на диск
-- Лимит кеша (50MB по умолчанию)
-
-## Обновления
-
-- **Скрипты**: загрузка `.meta.js`, сравнение `@version`, фоновая проверка при запуске
-- **APK**: GitHub Releases API, сравнение `tag_name` с `BuildConfig.VERSION_NAME`, раз в 24 часа
+4. Группировка по `@run-at`: document-start выполняется в `onPageStarted`, document-end/idle — по событию DOMContentLoaded
+5. Ошибки инжекции собираются через `window.__sbg_injection_errors`
 
 ## Флоу запуска
 
-1. `SplashActivity`: список скриптов с тогглами + кнопка «Запустить»
-2. Первый запуск: загрузка пресетных скриптов (прогресс-бар)
-3. Последующие запуски: список сразу, обновления в фоне
-4. Нажатие «Запустить» → `GameActivity`
+1. `MainActivity` → `GameActivity`
+2. Первый запуск: автоматическая загрузка предустановленных скриптов
+3. `SbgWebViewClient` загружает `sbg-game.ru/app`, инжектирует включённые скрипты
+4. JS-бриджи доступны скриптам через `Android.*` и `__sbg_share.*`
 
 ## Структура проекта
 
 ```
-app/src/main/kotlin/com/github/wrager/sbguserscripts/
-├── GameActivity.kt
-├── bridge/            ClipboardBridge, ShareBridge
-├── cache/             AssetCache, CachePolicy
-├── diagnostic/        DiagnosticCollector, BugReportLauncher
-├── game/              GameVersionMonitor
-├── manager/           ScriptManagerActivity, AddScriptDialog
+app/src/main/java/com/github/wrager/sbguserscripts/
+├── MainActivity.kt          Launcher → GameActivity
+├── GameActivity.kt          WebView, immersive mode, geolocation
+├── bridge/
+│   ├── ClipboardBridge.kt   Полифил navigator.clipboard
+│   └── ShareBridge.kt       Открытие URL
 ├── script/
-│   ├── injector/      ScriptInjector, InjectionResult
-│   ├── model/         UserScript, ScriptHeader, ScriptConflict
-│   ├── parser/        HeaderParser
-│   ├── preset/        PresetScripts, ConflictRules
-│   ├── storage/       ScriptStorage (interface + impl)
-│   └── updater/       ScriptDownloader, ScriptUpdateChecker
-├── settings/          AppSettingsActivity, AppPreferences
-├── splash/            SplashActivity, ScriptListAdapter
-├── updater/           ApkUpdateChecker, ApkUpdateDialog
-└── webview/           SbgWebViewClient
+│   ├── injector/
+│   │   ├── ScriptInjector.kt      Генерация JS для инжекции
+│   │   └── InjectionResult.kt     Success | ScriptError
+│   ├── model/
+│   │   ├── UserScript.kt          Модель скрипта
+│   │   ├── ScriptHeader.kt        Заголовок скрипта
+│   │   ├── ScriptIdentifier.kt    Уникальный ID
+│   │   ├── ScriptVersion.kt       Сравнение версий
+│   │   └── ScriptConflict.kt      Описание конфликта
+│   ├── parser/
+│   │   └── HeaderParser.kt        Парсер ==UserScript== блока
+│   ├── preset/
+│   │   ├── PresetScripts.kt       Список предустановленных скриптов
+│   │   ├── PresetScript.kt        Модель предустановки
+│   │   ├── ConflictDetector.kt    Обнаружение конфликтов
+│   │   ├── ConflictRuleProvider.kt  Интерфейс правил
+│   │   └── StaticConflictRules.kt   Жёсткие правила
+│   ├── storage/
+│   │   ├── ScriptStorage.kt       Интерфейс хранилища
+│   │   ├── ScriptStorageImpl.kt   SharedPreferences + файлы
+│   │   ├── ScriptFileStorage.kt   Интерфейс файлового хранилища
+│   │   ├── ScriptFileStorageImpl.kt  Реализация
+│   │   └── ScriptSerializer.kt    JSON-сериализация
+│   └── updater/
+│       ├── HttpFetcher.kt         Интерфейс HTTP
+│       ├── DefaultHttpFetcher.kt  Реализация
+│       ├── ScriptDownloader.kt    Загрузка скриптов
+│       ├── ScriptUpdateChecker.kt Проверка обновлений
+│       ├── ScriptDownloadResult.kt  Success | Failure
+│       └── ScriptUpdateResult.kt    UpdateAvailable | UpToDate | CheckFailed
+└── webview/
+    └── SbgWebViewClient.kt  Загрузка страниц, инжекция, close()
 ```
