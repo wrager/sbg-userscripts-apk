@@ -7,4 +7,9 @@
         android:title="@string/update_all"
         app:showAsAction="never" />
 
+    <item
+        android:id="@+id/action_settings"
+        android:title="@string/settings"
+        app:showAsAction="never" />
+
 </menu>

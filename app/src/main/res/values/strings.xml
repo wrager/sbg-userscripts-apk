@@ -18,4 +18,13 @@
     <string name="updates_applied">Обновлено скриптов: %d</string>
     <string name="no_updates">Все скрипты актуальны</string>
     <string name="checking_updates">Проверка обновлений…</string>
+    <string name="settings">Настройки</string>
+    <string name="settings_category_scripts">Скрипты</string>
+    <string name="settings_auto_update">Автообновление скриптов</string>
+    <string name="settings_auto_update_summary">Проверять обновления при запуске</string>
+    <string name="settings_category_about">О приложении</string>
+    <string name="settings_version">Версия</string>
+    <string name="settings_version_value">%1$s (сборка %2$d)</string>
+    <string name="settings_report_bug">Сообщить об ошибке</string>
+    <string name="settings_report_bug_summary">Открыть GitHub Issues</string>
 </resources>

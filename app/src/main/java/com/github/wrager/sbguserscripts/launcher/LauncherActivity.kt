@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.github.wrager.sbguserscripts.GameActivity
 import com.github.wrager.sbguserscripts.R
+import com.github.wrager.sbguserscripts.script.model.ScriptIdentifier
 import com.github.wrager.sbguserscripts.script.preset.ConflictDetector
 import com.github.wrager.sbguserscripts.script.preset.StaticConflictRules
 import com.github.wrager.sbguserscripts.script.storage.ScriptFileStorageImpl
@@ -22,6 +23,7 @@ import com.github.wrager.sbguserscripts.script.storage.ScriptStorageImpl
 import com.github.wrager.sbguserscripts.script.updater.DefaultHttpFetcher
 import com.github.wrager.sbguserscripts.script.updater.ScriptDownloader
 import com.github.wrager.sbguserscripts.script.updater.ScriptUpdateChecker
+import com.github.wrager.sbguserscripts.settings.SettingsActivity
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -53,15 +55,33 @@ class LauncherActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_launcher)
+        setupToolbar()
+        setupScriptList()
+        setupButtons()
+        observeViewModel()
+    }
 
-        val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
+    private fun setupToolbar() {
+        findViewById<MaterialToolbar>(R.id.toolbar).setOnMenuItemClickListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.action_update_all -> {
+                    viewModel.updateAllScripts()
+                    Toast.makeText(this, R.string.checking_updates, Toast.LENGTH_SHORT).show()
+                    true
+                }
+                R.id.action_settings -> {
+                    startActivity(Intent(this, SettingsActivity::class.java))
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    private fun setupScriptList() {
         val scriptList = findViewById<RecyclerView>(R.id.scriptList)
-        val progressBar = findViewById<ProgressBar>(R.id.progressBar)
-        val emptyText = findViewById<TextView>(R.id.emptyText)
-        val launchButton = findViewById<MaterialButton>(R.id.launchButton)
-        val addScriptButton = findViewById<FloatingActionButton>(R.id.addScriptButton)
-
-        val adapter = ScriptListAdapter(
+        scriptList.layoutManager = LinearLayoutManager(this)
+        scriptList.adapter = ScriptListAdapter(
             onToggleChanged = { identifier, enabled ->
                 viewModel.toggleScript(identifier, enabled)
             },
@@ -69,28 +89,23 @@ class LauncherActivity : AppCompatActivity() {
                 showDeleteConfirmation(identifier)
             },
         )
+    }
 
-        scriptList.layoutManager = LinearLayoutManager(this)
-        scriptList.adapter = adapter
-
-        launchButton.setOnClickListener {
+    private fun setupButtons() {
+        findViewById<MaterialButton>(R.id.launchButton).setOnClickListener {
             startActivity(Intent(this, GameActivity::class.java))
         }
-
-        addScriptButton.setOnClickListener {
+        findViewById<FloatingActionButton>(R.id.addScriptButton).setOnClickListener {
             showAddScriptDialog()
         }
+    }
 
-        toolbar.setOnMenuItemClickListener { menuItem ->
-            when (menuItem.itemId) {
-                R.id.action_update_all -> {
-                    viewModel.updateAllScripts()
-                    Toast.makeText(this, R.string.checking_updates, Toast.LENGTH_SHORT).show()
-                    true
-                }
-                else -> false
-            }
-        }
+    private fun observeViewModel() {
+        val scriptList = findViewById<RecyclerView>(R.id.scriptList)
+        val progressBar = findViewById<ProgressBar>(R.id.progressBar)
+        val emptyText = findViewById<TextView>(R.id.emptyText)
+        val launchButton = findViewById<MaterialButton>(R.id.launchButton)
+        val adapter = scriptList.adapter as ScriptListAdapter
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -110,9 +125,7 @@ class LauncherActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.events.collect { event ->
-                    handleEvent(event)
-                }
+                viewModel.events.collect { event -> handleEvent(event) }
             }
         }
     }
@@ -152,7 +165,7 @@ class LauncherActivity : AppCompatActivity() {
             .show()
     }
 
-    private fun showDeleteConfirmation(identifier: com.github.wrager.sbguserscripts.script.model.ScriptIdentifier) {
+    private fun showDeleteConfirmation(identifier: ScriptIdentifier) {
         val scriptName = viewModel.uiState.value.scripts
             .find { it.identifier == identifier }?.name ?: return
 
