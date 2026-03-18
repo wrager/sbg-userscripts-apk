@@ -159,6 +159,7 @@ class LauncherViewModel(
             enabled = script.enabled,
             isPreset = script.isPreset,
             conflictNames = conflictNames,
+            sourceUrl = script.sourceUrl,
         )
     }
 

@@ -1,6 +1,7 @@
 package com.github.wrager.sbguserscripts.launcher
 
 import com.github.wrager.sbguserscripts.script.model.ScriptIdentifier
+import com.github.wrager.sbguserscripts.script.updater.GithubReleaseProvider
 
 data class LauncherUiState(
     val isLoading: Boolean = true,
@@ -15,7 +16,12 @@ data class ScriptUiItem(
     val enabled: Boolean,
     val isPreset: Boolean,
     val conflictNames: List<String>,
-)
+    val sourceUrl: String?,
+) {
+    val isGithubHosted: Boolean
+        get() = sourceUrl != null &&
+            GithubReleaseProvider.extractOwnerAndRepository(sourceUrl) != null
+}
 
 sealed class LauncherEvent {
     data class ScriptAdded(val scriptName: String) : LauncherEvent()
