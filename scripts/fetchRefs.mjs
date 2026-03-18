@@ -27,6 +27,7 @@ const URLS = {
   euiRelease: 'https://github.com/egorantonov/sbg-enhanced/releases/latest/download/eui.user.js',
   cuiRelease: 'https://github.com/egorantonov/sbg-enhanced/releases/latest/download/cui.user.js',
   olBundle: 'https://sbg-game.ru/packages/js/ol@10.6.0.js',
+  authPage: 'https://sbg-game.ru/',
   gamePage: 'https://sbg-game.ru/app/',
   anmilesRepo: 'https://github.com/anmiles/sbg.git',
 };
@@ -177,6 +178,15 @@ async function fetchOlBundle() {
   ok('OpenLayers', 'ol/ol.js', URLS.olBundle);
 }
 
+async function fetchAuthPage() {
+  const response = await fetchUrl(URLS.authPage);
+  const html = await response.text();
+  const dest = join(REFS, 'game', 'auth.html');
+  await mkdir(join(REFS, 'game'), { recursive: true });
+  await writeFile(dest, html, 'utf-8');
+  ok('Auth page HTML', 'game/auth.html', URLS.authPage);
+}
+
 async function fetchGameAssets() {
   const response = await fetchUrl(URLS.gamePage);
   const html = await response.text();
@@ -233,13 +243,15 @@ ${rows}
 
 ## Automatic content
 
-Everything except \`game/dom/\`, \`game/css/\` and \`screenshots/\` is downloaded automatically.
+Everything except \`game/dom/\`, \`game/css/\`, \`game/har/\` and \`screenshots/\` is downloaded automatically.
 Re-run \`node scripts/fetchRefs.mjs\` to update (manual content is preserved).
 
 ## Manual content
 
-- \`game/dom/body.html\` — rendered DOM (from DevTools)
+- \`game/dom/auth-body.html\` — DOM of the auth screen (from DevTools)
+- \`game/dom/game-body.html\` — DOM of the game screen after auth (from DevTools)
 - \`game/css/variables.css\` — :root CSS custom properties (from DevTools)
+- \`game/har/\` — HAR files of network requests (auth flow, game loading) from DevTools
 - \`screenshots/\` — UI screenshots
 `;
 }
@@ -254,6 +266,7 @@ async function main() {
   const manualDirs = [
     join(REFS, 'game', 'dom'),
     join(REFS, 'game', 'css'),
+    join(REFS, 'game', 'har'),
     join(REFS, 'screenshots'),
   ];
   const preservedPaths = [];
@@ -280,6 +293,7 @@ async function main() {
     join(REFS, 'ol'),
     join(REFS, 'game', 'dom'),
     join(REFS, 'game', 'css'),
+    join(REFS, 'game', 'har'),
     join(REFS, 'releases'),
     join(REFS, 'screenshots'),
     join(REFS, 'anmiles'),
@@ -295,12 +309,26 @@ async function main() {
 
   const stubs = [
     {
-      path: join(REFS, 'game', 'dom', 'body.html'),
+      path: join(REFS, 'game', 'dom', 'auth-body.html'),
       content: [
         '<!--',
-        '  Rendered DOM of the game page.',
+        '  Rendered DOM of the auth screen (before Telegram login).',
         '  How to get:',
-        '  1. Open https://sbg-game.ru/app/ in browser',
+        '  1. Open https://sbg-game.ru/ in browser (use incognito to avoid auto-login)',
+        '  2. Open DevTools → Elements',
+        '  3. Right-click <body> → Copy → Copy outerHTML',
+        '  4. Replace this file contents with the result',
+        '-->',
+        '',
+      ].join('\n'),
+    },
+    {
+      path: join(REFS, 'game', 'dom', 'game-body.html'),
+      content: [
+        '<!--',
+        '  Rendered DOM of the game screen (after auth, on /app/).',
+        '  How to get:',
+        '  1. Open https://sbg-game.ru/app/ in browser (must be logged in)',
         '  2. Open DevTools → Elements',
         '  3. Right-click <body> → Copy → Copy outerHTML',
         '  4. Replace this file contents with the result',
@@ -314,11 +342,31 @@ async function main() {
         '/*',
         ' * :root CSS custom properties of the game.',
         ' * How to get:',
-        ' * 1. Open https://sbg-game.ru/app/ in browser',
+        ' * 1. Open https://sbg-game.ru/app/ in browser (must be logged in)',
         ' * 2. Open DevTools → Console',
         " * 3. Run: copy([...document.styleSheets].flatMap(s => { try { return [...s.cssRules] } catch { return [] } }).filter(r => r.selectorText === ':root').map(r => r.cssText).join('\\n'))",
         ' * 4. Replace this file contents with the result',
         ' */',
+        '',
+      ].join('\n'),
+    },
+    {
+      path: join(REFS, 'game', 'har', 'README.md'),
+      content: [
+        '# HAR files',
+        '',
+        'Network request captures from DevTools.',
+        '',
+        '## How to get',
+        '',
+        '1. Open browser in incognito mode',
+        '2. Open DevTools → Network tab',
+        '3. Check "Preserve log"',
+        '4. Navigate to https://sbg-game.ru/',
+        '5. Complete Telegram authorization',
+        '6. Wait for the game to fully load',
+        '7. Right-click in Network tab → "Save all as HAR with content"',
+        '8. Save as `auth-and-load.har` in this directory',
         '',
       ].join('\n'),
     },
@@ -337,6 +385,7 @@ async function main() {
     fetchEuiRelease().catch((error) => fail('EUI release', URLS.euiRelease, error.message)),
     fetchCuiRelease().catch((error) => fail('CUI release', URLS.cuiRelease, error.message)),
     fetchOlBundle().catch((error) => fail('OL bundle', URLS.olBundle, error.message)),
+    fetchAuthPage().catch((error) => fail('Auth page', URLS.authPage, error.message)),
     fetchGameAssets().catch((error) => fail('Game assets', URLS.gamePage, error.message)),
     fetchAnmilesSources().catch((error) => fail('Anmiles APK', URLS.anmilesRepo, error.message)),
   ]);

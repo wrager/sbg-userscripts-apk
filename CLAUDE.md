@@ -19,6 +19,7 @@ Android APK для SBG (мобильная браузерная геолокац
 
 - Перед новой фичей/правкой — **сначала искать в `refs/`** (Read/Grep). Если `refs/` нет — запустить `node scripts/fetchRefs.mjs`
 - При проблемах с WebView, API игры или платформой — **сначала проверить refs/anmiles/** (референсный APK), потом документация
+- Исходники SVP можно также искать в соседней директории (`../sbg-vanilla-plus`) — это рабочая директория разработки SVP. Может содержать незакоммиченные изменения: проверять актуальность по `git log` и `git status`. Папку `dist/` там не смотреть — собирается редко, скорее всего неактуальна. В целом лучше использовать `refs/svp/`, но иногда соседняя директория может быть полезна
 
 ## Код
 
@@ -55,11 +56,14 @@ Android APK для SBG (мобильная браузерная геолокац
 | CUI sources | `cui/` | Исходники CUI |
 | EUI/CUI releases | `releases/` | Собранные .user.js |
 | OpenLayers | `ol/ol.js` | Картографическая библиотека игры |
-| Game HTML + script | `game/` | HTML страницы, скрипт игры |
+| Auth page HTML | `game/auth.html` | Страница авторизации (`sbg-game.ru/`) |
+| Game HTML + script | `game/index.html`, `game/script.js` | Страница игры (`sbg-game.ru/app/`) |
 
-Ручной контент (не скачивается автоматически):
-- `refs/game/dom/body.html` — DOM страницы (из DevTools)
+Ручной контент (не скачивается автоматически; см. инструкции в stub-файлах):
+- `refs/game/dom/auth-body.html` — DOM экрана авторизации (из DevTools)
+- `refs/game/dom/game-body.html` — DOM игрового экрана после авторизации (из DevTools)
 - `refs/game/css/variables.css` — CSS custom properties (из DevTools)
+- `refs/game/har/` — HAR-файлы сетевых запросов из DevTools (авторизация, загрузка игры)
 - `refs/screenshots/` — скриншоты UI
 
 ## Документация
