@@ -4,6 +4,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -34,6 +35,7 @@ class ScriptListAdapter(
         private val downloadStatusText: TextView = itemView.findViewById(R.id.downloadStatusText)
         private val toggle: SwitchCompat = itemView.findViewById(R.id.scriptToggle)
         private val actionButton: ImageButton = itemView.findViewById(R.id.actionButton)
+        private val loadingProgress: ProgressBar = itemView.findViewById(R.id.loadingProgress)
         private val conflictWarning: TextView = itemView.findViewById(R.id.conflictWarning)
 
         fun bind(item: ScriptUiItem) {
@@ -47,6 +49,7 @@ class ScriptListAdapter(
             detailsText.visibility = if (details.isNotEmpty()) View.VISIBLE else View.GONE
 
             bindDownloadStatus(item)
+            bindLoadingProgress(item)
             bindControls(item)
             bindConflictWarning(item)
         }
@@ -76,6 +79,23 @@ class ScriptListAdapter(
                 }
                 else -> {
                     downloadStatusText.visibility = View.GONE
+                }
+            }
+        }
+
+        private fun bindLoadingProgress(item: ScriptUiItem) {
+            when {
+                item.downloadProgress != null -> {
+                    loadingProgress.isIndeterminate = false
+                    loadingProgress.progress = item.downloadProgress
+                    loadingProgress.visibility = View.VISIBLE
+                }
+                item.isCheckingUpdate -> {
+                    loadingProgress.isIndeterminate = true
+                    loadingProgress.visibility = View.VISIBLE
+                }
+                else -> {
+                    loadingProgress.visibility = View.GONE
                 }
             }
         }
