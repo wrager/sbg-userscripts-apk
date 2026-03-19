@@ -215,13 +215,18 @@ class LauncherViewModel(
         }
     }
 
-    fun installVersion(identifier: ScriptIdentifier, downloadUrl: String) {
+    fun installVersion(identifier: ScriptIdentifier, downloadUrl: String, isLatest: Boolean) {
         viewModelScope.launch {
             val script = scriptStorage.getAll().find { it.identifier == identifier } ?: return@launch
             val result = downloader.download(downloadUrl, isPreset = script.isPreset)
             when (result) {
                 is ScriptDownloadResult.Success -> {
                     scriptStorage.setEnabled(result.script.identifier, script.enabled)
+                    if (isLatest) {
+                        upToDateIdentifiers.add(result.script.identifier)
+                    } else {
+                        updateAvailableIdentifiers.add(result.script.identifier)
+                    }
                     refreshScriptList()
                     _events.send(LauncherEvent.VersionInstallCompleted(result.script.header.name))
                 }

@@ -396,10 +396,12 @@ class LauncherViewModelTest {
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.installVersion(script.identifier, "https://example.com/v2/script.user.js")
+        viewModel.installVersion(script.identifier, "https://example.com/v2/script.user.js", isLatest = true)
         advanceUntilIdle()
 
         verify { scriptStorage.setEnabled(updatedScript.identifier, true) }
+        val item = viewModel.uiState.value.scripts.first { it.identifier == updatedScript.identifier }
+        assertTrue(item.isUpToDate)
     }
 
     @Test
