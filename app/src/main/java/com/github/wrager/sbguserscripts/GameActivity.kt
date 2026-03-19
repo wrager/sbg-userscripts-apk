@@ -21,6 +21,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.preference.PreferenceManager
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import com.github.wrager.sbguserscripts.settings.SettingsActivity
 import com.github.wrager.sbguserscripts.bridge.ClipboardBridge
@@ -36,6 +37,7 @@ import java.io.File
 
 class GameActivity : AppCompatActivity() {
 
+    private lateinit var rootLayout: FrameLayout
     private lateinit var webView: WebView
     private lateinit var scriptStorage: ScriptStorage
     private var isFullscreen = false
@@ -65,6 +67,7 @@ class GameActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_game)
+        rootLayout = findViewById(R.id.rootLayout)
         webView = findViewById(R.id.gameWebView)
         setupWindowInsets()
 
@@ -109,8 +112,9 @@ class GameActivity : AppCompatActivity() {
             .getBoolean(KEY_FULLSCREEN_MODE, false)
 
         // Edge-to-edge всегда включён (обязательно на Android 15+).
-        // В неполноэкранном режиме сдвигаем WebView паддингами, чтобы контент не залезал под бары.
-        ViewCompat.setOnApplyWindowInsetsListener(webView) { view, windowInsets ->
+        // В неполноэкранном режиме сдвигаем корневой layout паддингами,
+        // чтобы WebView не залезал под системные бары.
+        ViewCompat.setOnApplyWindowInsetsListener(rootLayout) { view, windowInsets ->
             if (isFullscreen) {
                 view.setPadding(0, 0, 0, 0)
             } else {
@@ -131,8 +135,8 @@ class GameActivity : AppCompatActivity() {
         } else {
             controller.show(WindowInsetsCompat.Type.systemBars())
         }
-        // Перезапросить insets для обновления паддингов WebView
-        ViewCompat.requestApplyInsets(webView)
+        // Перезапросить insets для обновления паддингов корневого layout
+        ViewCompat.requestApplyInsets(rootLayout)
     }
 
     private fun configureCookies() {
@@ -213,20 +217,8 @@ class GameActivity : AppCompatActivity() {
             PackageManager.PERMISSION_GRANTED
 
     private fun setupSettingsButton() {
-        val settingsButton = findViewById<ImageButton>(R.id.settingsButton)
-        settingsButton.setOnClickListener {
+        findViewById<ImageButton>(R.id.settingsButton).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
-        }
-
-        val baseBottomMargin = resources.getDimensionPixelSize(R.dimen.settings_button_margin_bottom)
-        val baseEndMargin = resources.getDimensionPixelSize(R.dimen.settings_button_margin_end)
-        ViewCompat.setOnApplyWindowInsetsListener(settingsButton) { view, windowInsets ->
-            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-            val layoutParams = view.layoutParams as android.widget.FrameLayout.LayoutParams
-            layoutParams.bottomMargin = baseBottomMargin + insets.bottom
-            layoutParams.rightMargin = baseEndMargin + insets.right
-            view.layoutParams = layoutParams
-            windowInsets
         }
     }
 
