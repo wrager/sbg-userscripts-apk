@@ -61,7 +61,6 @@ class GameActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
         setContentView(R.layout.activity_game)
         webView = findViewById(R.id.gameWebView)
 
@@ -102,6 +101,9 @@ class GameActivity : AppCompatActivity() {
     }
 
     private fun applyFullscreen(enabled: Boolean) {
+        // setDecorFitsSystemWindows(false) = контент заходит за системные бары (edge-to-edge)
+        // setDecorFitsSystemWindows(true)  = контент ограничен областью вне системных баров (WebView ресайзится)
+        WindowCompat.setDecorFitsSystemWindows(window, !enabled)
         val controller = WindowInsetsControllerCompat(window, window.decorView)
         if (enabled) {
             controller.hide(WindowInsetsCompat.Type.systemBars())
