@@ -20,6 +20,11 @@
             android:summary="@string/settings_auto_update_summary"
             android:title="@string/settings_auto_update" />
 
+        <Preference
+            android:key="manage_scripts"
+            android:summary="@string/settings_manage_scripts_summary"
+            android:title="@string/settings_manage_scripts" />
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/settings_category_about">

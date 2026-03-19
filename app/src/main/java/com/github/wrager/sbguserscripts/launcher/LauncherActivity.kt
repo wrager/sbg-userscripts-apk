@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.github.wrager.sbguserscripts.GameActivity
@@ -56,6 +57,14 @@ class LauncherActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        if (prefs.getBoolean(KEY_SETUP_COMPLETED, false)) {
+            startActivity(Intent(this, GameActivity::class.java))
+            finish()
+            return
+        }
+
         setContentView(R.layout.activity_launcher)
         setupToolbar()
         setupScriptList()
@@ -98,6 +107,8 @@ class LauncherActivity : AppCompatActivity() {
 
     private fun setupButtons() {
         findViewById<MaterialButton>(R.id.launchButton).setOnClickListener {
+            PreferenceManager.getDefaultSharedPreferences(this)
+                .edit().putBoolean(KEY_SETUP_COMPLETED, true).apply()
             startActivity(Intent(this, GameActivity::class.java))
         }
         findViewById<FloatingActionButton>(R.id.addScriptButton).setOnClickListener {
@@ -253,5 +264,9 @@ class LauncherActivity : AppCompatActivity() {
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+    }
+
+    companion object {
+        private const val KEY_SETUP_COMPLETED = "setup_completed"
     }
 }

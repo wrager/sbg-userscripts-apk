@@ -7,6 +7,7 @@ import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import com.github.wrager.sbguserscripts.BuildConfig
 import com.github.wrager.sbguserscripts.R
+import com.github.wrager.sbguserscripts.launcher.LauncherActivity
 
 class SettingsFragment : PreferenceFragmentCompat() {
 
@@ -15,6 +16,11 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
         findPreference<Preference>("app_version")?.summary =
             getString(R.string.settings_version_value, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
+
+        findPreference<Preference>("manage_scripts")?.setOnPreferenceClickListener {
+            startActivity(Intent(requireContext(), LauncherActivity::class.java))
+            true
+        }
 
         findPreference<Preference>("report_bug")?.setOnPreferenceClickListener {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ISSUES_URL)))

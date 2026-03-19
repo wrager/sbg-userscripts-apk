@@ -1,6 +1,7 @@
 package com.github.wrager.sbguserscripts
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
@@ -19,6 +20,8 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.preference.PreferenceManager
+import com.github.wrager.sbguserscripts.settings.SettingsActivity
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.github.wrager.sbguserscripts.bridge.ClipboardBridge
 import com.github.wrager.sbguserscripts.bridge.ShareBridge
 import com.github.wrager.sbguserscripts.script.injector.ScriptInjector
@@ -67,6 +70,7 @@ class GameActivity : AppCompatActivity() {
         }
         setupWebView()
         setupBackPressHandling()
+        setupSettingsButton()
 
         if (savedInstanceState == null) {
             webView.loadUrl(GAME_URL)
@@ -170,6 +174,12 @@ class GameActivity : AppCompatActivity() {
             PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
+
+    private fun setupSettingsButton() {
+        findViewById<FloatingActionButton>(R.id.settingsButton).setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+    }
 
     private fun setupBackPressHandling() {
         onBackPressedDispatcher.addCallback(
