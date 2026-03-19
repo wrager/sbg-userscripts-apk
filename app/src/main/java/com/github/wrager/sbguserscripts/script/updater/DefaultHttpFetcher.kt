@@ -1,23 +1,49 @@
 package com.github.wrager.sbguserscripts.script.updater
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class DefaultHttpFetcher : HttpFetcher {
 
     override suspend fun fetch(
         url: String,
         headers: Map<String, String>,
+        onProgress: ((Int) -> Unit)?,
     ): String = withContext(Dispatchers.IO) {
         val connection = URL(url).openConnection() as HttpURLConnection
         try {
             connection.useCaches = false
             headers.forEach { (key, value) -> connection.setRequestProperty(key, value) }
-            connection.inputStream.bufferedReader().use { it.readText() }
+            val contentLength = connection.contentLengthLong
+            val outputStream = ByteArrayOutputStream()
+            val buffer = ByteArray(CHUNK_SIZE)
+            var totalBytesRead = 0L
+            var lastReportedProgress = -1
+            connection.inputStream.use { inputStream ->
+                var bytesThisRead: Int
+                while (inputStream.read(buffer).also { bytesThisRead = it } != -1) {
+                    outputStream.write(buffer, 0, bytesThisRead)
+                    totalBytesRead += bytesThisRead
+                    if (onProgress != null && contentLength > 0) {
+                        val progress = ((totalBytesRead * 100) / contentLength).toInt()
+                            .coerceIn(0, 100)
+                        if (progress != lastReportedProgress) {
+                            lastReportedProgress = progress
+                            onProgress(progress)
+                        }
+                    }
+                }
+            }
+            outputStream.toString(Charsets.UTF_8.name())
         } finally {
             connection.disconnect()
         }
+    }
+
+    companion object {
+        private const val CHUNK_SIZE = 8192
     }
 }

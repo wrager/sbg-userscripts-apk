@@ -29,7 +29,7 @@ class ScriptDownloaderTest {
 
     @Test
     fun `downloads and saves script with valid header`() = runTest {
-        coEvery { httpFetcher.fetch(any()) } returns SCRIPT_WITH_HEADER
+        coEvery { httpFetcher.fetch(any(), any(), any()) } returns SCRIPT_WITH_HEADER
         coEvery { scriptStorage.save(any()) } just Runs
 
         val result = downloader.download("https://example.com/script.user.js")
@@ -42,8 +42,27 @@ class ScriptDownloaderTest {
     }
 
     @Test
+    fun `calls onProgress callback when provided`() = runTest {
+        val reportedProgress = mutableListOf<Int>()
+        coEvery { httpFetcher.fetch(any(), any(), any()) } answers {
+            @Suppress("UNCHECKED_CAST")
+            val onProgress = arg<((Int) -> Unit)?>(2)
+            onProgress?.invoke(50)
+            onProgress?.invoke(100)
+            SCRIPT_WITH_HEADER
+        }
+        coEvery { scriptStorage.save(any()) } just Runs
+
+        downloader.download("https://example.com/script.user.js") { progress ->
+            reportedProgress.add(progress)
+        }
+
+        assertEquals(listOf(50, 100), reportedProgress)
+    }
+
+    @Test
     fun `returns failure when header is missing`() = runTest {
-        coEvery { httpFetcher.fetch(any()) } returns "console.log('no header')"
+        coEvery { httpFetcher.fetch(any(), any(), any()) } returns "console.log('no header')"
 
         val result = downloader.download("https://example.com/script.js")
 
@@ -53,7 +72,7 @@ class ScriptDownloaderTest {
 
     @Test
     fun `returns failure when network error occurs`() = runTest {
-        coEvery { httpFetcher.fetch(any()) } throws IOException("Network error")
+        coEvery { httpFetcher.fetch(any(), any(), any()) } throws IOException("Network error")
 
         val result = downloader.download("https://example.com/script.user.js")
 
@@ -62,7 +81,7 @@ class ScriptDownloaderTest {
 
     @Test
     fun `sets isPreset flag correctly`() = runTest {
-        coEvery { httpFetcher.fetch(any()) } returns SCRIPT_WITH_HEADER
+        coEvery { httpFetcher.fetch(any(), any(), any()) } returns SCRIPT_WITH_HEADER
         coEvery { scriptStorage.save(any()) } just Runs
 
         val result = downloader.download("https://example.com/script.user.js", isPreset = true)
@@ -101,7 +120,7 @@ class ScriptDownloaderTest {
 
     @Test
     fun `uses provided URL as fallback when header has no downloadUrl`() = runTest {
-        coEvery { httpFetcher.fetch(any()) } returns SCRIPT_WITH_HEADER
+        coEvery { httpFetcher.fetch(any(), any(), any()) } returns SCRIPT_WITH_HEADER
         coEvery { scriptStorage.save(any()) } just Runs
 
         val result = downloader.download("https://fallback.com/script.user.js")
@@ -115,7 +134,7 @@ class ScriptDownloaderTest {
 
     @Test
     fun `new script is disabled by default`() = runTest {
-        coEvery { httpFetcher.fetch(any()) } returns SCRIPT_WITH_HEADER
+        coEvery { httpFetcher.fetch(any(), any(), any()) } returns SCRIPT_WITH_HEADER
         coEvery { scriptStorage.save(any()) } just Runs
 
         val result = downloader.download("https://example.com/script.user.js")

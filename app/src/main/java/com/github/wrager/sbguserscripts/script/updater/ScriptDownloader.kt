@@ -12,9 +12,10 @@ class ScriptDownloader(
     suspend fun download(
         url: String,
         isPreset: Boolean = false,
+        onProgress: ((Int) -> Unit)? = null,
     ): ScriptDownloadResult {
         return try {
-            val content = httpFetcher.fetch(url)
+            val content = httpFetcher.fetch(url, onProgress = onProgress)
             val header = HeaderParser.parse(content)
                 ?: return ScriptDownloadResult.Failure(
                     url,
