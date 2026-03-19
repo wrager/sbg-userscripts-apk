@@ -207,9 +207,7 @@ class LauncherActivity : AppCompatActivity() {
         } else {
             popup.menu.add(R.string.reinstall)
         }
-        if (!item.isPreset) {
-            popup.menu.add(R.string.delete_script)
-        }
+        popup.menu.add(R.string.delete_script)
         popup.setOnMenuItemClickListener { menuItem ->
             when (menuItem.title) {
                 getString(R.string.select_version) -> {
