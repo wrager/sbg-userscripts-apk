@@ -23,7 +23,7 @@
     <string name="no_updates">Все скрипты актуальны</string>
     <string name="downloading_progress">Загружается %d%%</string>
     <string name="status_downloaded">Загружен</string>
-    <string name="status_up_to_date">Актуально</string>
+    <string name="status_up_to_date">Последняя версия</string>
     <string name="status_update_available">Доступно обновление</string>
     <string name="update">Обновить</string>
     <string name="download_script">Загрузить</string>

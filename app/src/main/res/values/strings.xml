@@ -23,7 +23,7 @@
     <string name="no_updates">All scripts are up to date</string>
     <string name="downloading_progress">Downloading %d%%</string>
     <string name="status_downloaded">Downloaded</string>
-    <string name="status_up_to_date">Up to date</string>
+    <string name="status_up_to_date">Latest version</string>
     <string name="status_update_available">Update available</string>
     <string name="update">Update</string>
     <string name="download_script">Download</string>
