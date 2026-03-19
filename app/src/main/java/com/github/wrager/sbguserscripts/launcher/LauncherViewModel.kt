@@ -9,6 +9,7 @@ import com.github.wrager.sbguserscripts.script.model.UserScript
 import com.github.wrager.sbguserscripts.script.preset.ConflictDetector
 import com.github.wrager.sbguserscripts.script.preset.PresetScripts
 import com.github.wrager.sbguserscripts.script.storage.ScriptStorage
+import com.github.wrager.sbguserscripts.script.injector.InjectionStateStorage
 import com.github.wrager.sbguserscripts.script.updater.GithubReleaseProvider
 import com.github.wrager.sbguserscripts.script.updater.ScriptDownloadResult
 import com.github.wrager.sbguserscripts.script.updater.ScriptDownloader
@@ -28,6 +29,7 @@ class LauncherViewModel(
     private val downloader: ScriptDownloader,
     private val updateChecker: ScriptUpdateChecker,
     private val githubReleaseProvider: GithubReleaseProvider,
+    private val injectionStateStorage: InjectionStateStorage,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LauncherUiState())
@@ -309,7 +311,19 @@ class LauncherViewModel(
             .filter { !it.isPreset }
             .map { buildScriptUiItem(it, canonicalEnabledIdentifiers, nameByIdentifier) }
 
-        _uiState.value = LauncherUiState(isLoading = false, scripts = presetItems + customItems)
+        val currentEnabledSnapshot = storedScripts
+            .filter { it.enabled }
+            .map { "${it.identifier.value}::${it.header.version ?: ""}" }
+            .toSet()
+        val lastInjectedSnapshot = injectionStateStorage.getSnapshot()
+        val reloadNeeded = lastInjectedSnapshot.isNotEmpty() &&
+            currentEnabledSnapshot != lastInjectedSnapshot
+
+        _uiState.value = LauncherUiState(
+            isLoading = false,
+            scripts = presetItems + customItems,
+            reloadNeeded = reloadNeeded,
+        )
     }
 
     private fun buildScriptUiItem(
@@ -354,6 +368,7 @@ class LauncherViewModel(
         private val downloader: ScriptDownloader,
         private val updateChecker: ScriptUpdateChecker,
         private val githubReleaseProvider: GithubReleaseProvider,
+        private val injectionStateStorage: InjectionStateStorage,
     ) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             @Suppress("UNCHECKED_CAST")
@@ -363,6 +378,7 @@ class LauncherViewModel(
                 downloader,
                 updateChecker,
                 githubReleaseProvider,
+                injectionStateStorage,
             ) as T
         }
     }

@@ -1,5 +1,6 @@
 package com.github.wrager.sbguserscripts.launcher
 
+import com.github.wrager.sbguserscripts.script.injector.InjectionStateStorage
 import com.github.wrager.sbguserscripts.script.model.ScriptHeader
 import com.github.wrager.sbguserscripts.script.model.ScriptIdentifier
 import com.github.wrager.sbguserscripts.script.model.UserScript
@@ -46,6 +47,7 @@ class LauncherViewModelTest {
     private lateinit var downloader: ScriptDownloader
     private lateinit var updateChecker: ScriptUpdateChecker
     private lateinit var githubReleaseProvider: GithubReleaseProvider
+    private lateinit var injectionStateStorage: InjectionStateStorage
 
     @Before
     fun setUp() {
@@ -54,8 +56,10 @@ class LauncherViewModelTest {
         downloader = mockk()
         updateChecker = mockk()
         githubReleaseProvider = mockk()
+        injectionStateStorage = mockk()
 
         coEvery { updateChecker.checkAllForUpdates() } returns emptyList()
+        every { injectionStateStorage.getSnapshot() } returns emptySet()
     }
 
     @After
@@ -423,6 +427,7 @@ class LauncherViewModelTest {
         downloader,
         updateChecker,
         githubReleaseProvider,
+        injectionStateStorage,
     )
 
     private fun testScript(

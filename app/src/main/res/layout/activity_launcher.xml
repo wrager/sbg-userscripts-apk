@@ -62,6 +62,16 @@
     </FrameLayout>
 
     <com.google.android.material.button.MaterialButton
+        android:id="@+id/reloadButton"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="8dp"
+        android:text="@string/reload_game"
+        android:visibility="gone" />
+
+    <com.google.android.material.button.MaterialButton
         android:id="@+id/launchButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

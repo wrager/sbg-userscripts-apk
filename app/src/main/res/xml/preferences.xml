@@ -25,6 +25,11 @@
             android:summary="@string/settings_manage_scripts_summary"
             android:title="@string/settings_manage_scripts" />
 
+        <Preference
+            android:key="reload_game"
+            android:summary="@string/settings_reload_game_summary"
+            android:title="@string/reload_game" />
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/settings_category_about">

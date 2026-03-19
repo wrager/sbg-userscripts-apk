@@ -24,6 +24,8 @@ import android.widget.ImageButton
 import com.github.wrager.sbguserscripts.settings.SettingsActivity
 import com.github.wrager.sbguserscripts.bridge.ClipboardBridge
 import com.github.wrager.sbguserscripts.bridge.ShareBridge
+import com.github.wrager.sbguserscripts.launcher.LauncherActivity
+import com.github.wrager.sbguserscripts.script.injector.InjectionStateStorage
 import com.github.wrager.sbguserscripts.script.injector.ScriptInjector
 import com.github.wrager.sbguserscripts.script.storage.ScriptFileStorageImpl
 import com.github.wrager.sbguserscripts.script.storage.ScriptStorage
@@ -85,9 +87,12 @@ class GameActivity : AppCompatActivity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
-            val isFullscreen = PreferenceManager.getDefaultSharedPreferences(this)
-                .getBoolean(KEY_FULLSCREEN_MODE, false)
-            applyFullscreen(isFullscreen)
+            val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+            applyFullscreen(prefs.getBoolean(KEY_FULLSCREEN_MODE, false))
+            if (prefs.getBoolean(LauncherActivity.KEY_RELOAD_REQUESTED, false)) {
+                prefs.edit().remove(LauncherActivity.KEY_RELOAD_REQUESTED).apply()
+                webView.reload()
+            }
         }
     }
 
@@ -133,10 +138,12 @@ class GameActivity : AppCompatActivity() {
         val preferences = getSharedPreferences("scripts", MODE_PRIVATE)
         val fileStorage = ScriptFileStorageImpl(File(filesDir, "scripts"))
         scriptStorage = ScriptStorageImpl(preferences, fileStorage)
+        val injectionStateStorage = InjectionStateStorage(preferences)
         val scriptInjector = ScriptInjector(
             scriptStorage = scriptStorage,
             applicationId = BuildConfig.APPLICATION_ID,
             versionName = BuildConfig.VERSION_NAME,
+            injectionStateStorage = injectionStateStorage,
         )
         webView.webViewClient = SbgWebViewClient(scriptInjector)
 

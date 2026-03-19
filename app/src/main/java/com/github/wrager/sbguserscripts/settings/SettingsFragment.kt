@@ -5,7 +5,9 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.PreferenceManager
 import com.github.wrager.sbguserscripts.BuildConfig
+import com.github.wrager.sbguserscripts.GameActivity
 import com.github.wrager.sbguserscripts.R
 import com.github.wrager.sbguserscripts.launcher.LauncherActivity
 
@@ -21,6 +23,16 @@ class SettingsFragment : PreferenceFragmentCompat() {
             val intent = Intent(requireContext(), LauncherActivity::class.java)
             intent.putExtra(LauncherActivity.EXTRA_FROM_SETTINGS, true)
             startActivity(intent)
+            true
+        }
+
+        findPreference<Preference>("reload_game")?.setOnPreferenceClickListener {
+            PreferenceManager.getDefaultSharedPreferences(requireContext())
+                .edit().putBoolean(LauncherActivity.KEY_RELOAD_REQUESTED, true).apply()
+            startActivity(
+                Intent(requireContext(), GameActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            )
             true
         }
 

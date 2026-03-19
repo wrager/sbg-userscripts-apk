@@ -6,6 +6,7 @@ import com.github.wrager.sbguserscripts.script.updater.GithubReleaseProvider
 data class LauncherUiState(
     val isLoading: Boolean = true,
     val scripts: List<ScriptUiItem> = emptyList(),
+    val reloadNeeded: Boolean = false,
 )
 
 data class ScriptUiItem(

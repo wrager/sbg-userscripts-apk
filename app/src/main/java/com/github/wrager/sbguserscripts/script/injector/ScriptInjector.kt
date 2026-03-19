@@ -12,12 +12,14 @@ class ScriptInjector(
     private val scriptStorage: ScriptStorage,
     private val applicationId: String,
     private val versionName: String,
+    private val injectionStateStorage: InjectionStateStorage? = null,
 ) {
 
     fun inject(webView: WebView, callback: (List<InjectionResult>) -> Unit = {}) {
         injectGlobalVariables(webView)
         injectClipboardPolyfill(webView)
         val enabledScripts = scriptStorage.getEnabled()
+        injectionStateStorage?.saveSnapshot(enabledScripts)
         if (enabledScripts.isEmpty()) {
             callback(emptyList())
             return
