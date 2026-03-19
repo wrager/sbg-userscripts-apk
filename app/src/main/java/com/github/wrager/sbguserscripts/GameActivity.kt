@@ -82,11 +82,13 @@ class GameActivity : AppCompatActivity() {
         webView.restoreState(savedInstanceState)
     }
 
-    override fun onResume() {
-        super.onResume()
-        val isFullscreen = PreferenceManager.getDefaultSharedPreferences(this)
-            .getBoolean(KEY_FULLSCREEN_MODE, false)
-        applyFullscreen(isFullscreen)
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            val isFullscreen = PreferenceManager.getDefaultSharedPreferences(this)
+                .getBoolean(KEY_FULLSCREEN_MODE, false)
+            applyFullscreen(isFullscreen)
+        }
     }
 
     override fun onPause() {
