@@ -234,10 +234,18 @@ class LauncherViewModel(
                 val versions = releases.mapNotNull { release ->
                     val asset = release.assets.find { it.name == filename } ?: return@mapNotNull null
                     val versionTag = release.tagName.removePrefix("v")
+                    // releaseTag заполняется при установке через диалог версий
+                    // и позволяет определить текущую версию, даже если @version
+                    // в заголовке скрипта не совпадает с тегом релиза
+                    val isCurrent = if (script.releaseTag != null) {
+                        release.tagName == script.releaseTag
+                    } else {
+                        versionTag == script.header.version
+                    }
                     VersionOption(
                         tagName = release.tagName,
                         downloadUrl = asset.downloadUrl,
-                        isCurrent = versionTag == script.header.version,
+                        isCurrent = isCurrent,
                     )
                 }
                 _events.send(LauncherEvent.VersionsLoaded(identifier, versions))
@@ -251,7 +259,12 @@ class LauncherViewModel(
         }
     }
 
-    fun installVersion(identifier: ScriptIdentifier, downloadUrl: String, isLatest: Boolean) {
+    fun installVersion(
+        identifier: ScriptIdentifier,
+        downloadUrl: String,
+        isLatest: Boolean,
+        tagName: String,
+    ) {
         viewModelScope.launch {
             val script = scriptStorage.getAll().find { it.identifier == identifier } ?: return@launch
             downloadProgressMap[identifier] = 0
@@ -264,19 +277,26 @@ class LauncherViewModel(
             when (result) {
                 is ScriptDownloadResult.Success -> {
                     cleanupOldIdentifier(identifier, result.script.identifier)
-                    scriptStorage.setEnabled(result.script.identifier, script.enabled)
-                    upToDateIdentifiers.remove(result.script.identifier)
-                    updateAvailableIdentifiers.remove(result.script.identifier)
+                    // Сохраняем тег релиза, чтобы в списке версий можно было
+                    // определить текущую, даже если @version в заголовке скрипта
+                    // не совпадает с тегом (например, CUI в репо EUI)
+                    val scriptWithTag = result.script.copy(
+                        releaseTag = tagName,
+                        enabled = script.enabled,
+                    )
+                    scriptStorage.save(scriptWithTag)
+                    upToDateIdentifiers.remove(scriptWithTag.identifier)
+                    updateAvailableIdentifiers.remove(scriptWithTag.identifier)
                     if (isLatest) {
-                        upToDateIdentifiers.add(result.script.identifier)
+                        upToDateIdentifiers.add(scriptWithTag.identifier)
                     } else {
-                        updateAvailableIdentifiers.add(result.script.identifier)
+                        updateAvailableIdentifiers.add(scriptWithTag.identifier)
                     }
                     refreshScriptList()
                     _events.send(
                         LauncherEvent.VersionInstallCompleted(
-                            result.script.header.name,
-                            result.script.header.version,
+                            scriptWithTag.header.name,
+                            scriptWithTag.header.version,
                         ),
                     )
                 }

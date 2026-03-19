@@ -384,6 +384,46 @@ class LauncherViewModelTest {
     }
 
     @Test
+    fun `loadVersions uses releaseTag to determine current version`() = runTest {
+        // Скрипт установлен из тега v6.14.0, но @version в заголовке — 26.1.7
+        // (например, CUI хостится в репо EUI)
+        val script = testScript(
+            version = "26.1.7",
+            sourceUrl = "https://github.com/owner/repo/releases/latest/download/script.user.js",
+            releaseTag = "v6.14.0",
+        )
+        every { scriptStorage.getAll() } returns listOf(script)
+        coEvery {
+            githubReleaseProvider.fetchReleases("owner", "repo")
+        } returns listOf(
+            GithubRelease(
+                "v6.15.0",
+                listOf(GithubAsset("script.user.js", "https://github.com/download/v6.15.0/script.user.js")),
+            ),
+            GithubRelease(
+                "v6.14.0",
+                listOf(GithubAsset("script.user.js", "https://github.com/download/v6.14.0/script.user.js")),
+            ),
+        )
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val events = mutableListOf<LauncherEvent>()
+        val job = launch { viewModel.events.collect { events.add(it) } }
+
+        viewModel.loadVersions(script.identifier)
+        advanceUntilIdle()
+
+        val versionsEvent = events.filterIsInstance<LauncherEvent.VersionsLoaded>().first()
+        assertEquals(2, versionsEvent.versions.size)
+        assertFalse(versionsEvent.versions[0].isCurrent)
+        assertTrue(versionsEvent.versions[1].isCurrent)
+
+        job.cancel()
+    }
+
+    @Test
     fun `installVersion downloads and preserves enabled state`() = runTest {
         val script = testScript(enabled = true)
         every { scriptStorage.getAll() } returns listOf(script)
@@ -391,15 +431,25 @@ class LauncherViewModelTest {
         coEvery {
             downloader.download("https://example.com/v2/script.user.js", isPreset = false, any())
         } returns ScriptDownloadResult.Success(updatedScript)
-        every { scriptStorage.setEnabled(any(), any()) } just Runs
+        every { scriptStorage.save(any()) } answers {
+            val saved = arg<UserScript>(0)
+            every { scriptStorage.getAll() } returns listOf(saved)
+        }
 
         val viewModel = createViewModel()
         advanceUntilIdle()
 
-        viewModel.installVersion(script.identifier, "https://example.com/v2/script.user.js", isLatest = true)
+        viewModel.installVersion(
+            script.identifier,
+            "https://example.com/v2/script.user.js",
+            isLatest = true,
+            tagName = "v2.0.0",
+        )
         advanceUntilIdle()
 
-        verify { scriptStorage.setEnabled(updatedScript.identifier, true) }
+        verify {
+            scriptStorage.save(match { it.enabled && it.releaseTag == "v2.0.0" })
+        }
         val item = viewModel.uiState.value.scripts.first { it.identifier == updatedScript.identifier }
         assertTrue(item.isUpToDate)
     }
@@ -492,13 +542,16 @@ class LauncherViewModelTest {
         coEvery {
             downloader.download("https://example.com/v1/script.user.js", isPreset = false, any())
         } returns ScriptDownloadResult.Success(olderScript)
-        every { scriptStorage.setEnabled(any(), any()) } just Runs
-        every { scriptStorage.getAll() } returns listOf(olderScript)
+        every { scriptStorage.save(any()) } answers {
+            val saved = arg<UserScript>(0)
+            every { scriptStorage.getAll() } returns listOf(saved)
+        }
 
         viewModel.installVersion(
             script.identifier,
             "https://example.com/v1/script.user.js",
             isLatest = false,
+            tagName = "v1.0.0",
         )
         advanceUntilIdle()
 
@@ -542,6 +595,7 @@ class LauncherViewModelTest {
         version: String = "1.0.0",
         enabled: Boolean = false,
         sourceUrl: String = "https://example.com/script.user.js",
+        releaseTag: String? = null,
     ) = UserScript(
         identifier = identifier,
         header = ScriptHeader(name = name, version = version),
@@ -550,5 +604,6 @@ class LauncherViewModelTest {
         content = "console.log('test')",
         enabled = enabled,
         isPreset = false,
+        releaseTag = releaseTag,
     )
 }

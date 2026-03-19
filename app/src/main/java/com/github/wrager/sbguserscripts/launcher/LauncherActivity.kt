@@ -307,8 +307,9 @@ class LauncherActivity : AppCompatActivity() {
                 val selectedPosition = listView.checkedItemPosition
                 if (selectedPosition >= 0) {
                     // versions[0] — самая новая (GitHub API отдаёт в обратном хронологическом порядке)
+                    val selected = versions[selectedPosition]
                     val isLatest = selectedPosition == 0
-                    viewModel.installVersion(identifier, versions[selectedPosition].downloadUrl, isLatest)
+                    viewModel.installVersion(identifier, selected.downloadUrl, isLatest, selected.tagName)
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)

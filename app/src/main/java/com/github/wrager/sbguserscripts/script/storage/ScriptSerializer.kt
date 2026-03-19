@@ -15,6 +15,7 @@ internal object ScriptSerializer {
             put("updateUrl", script.updateUrl)
             put("enabled", script.enabled)
             put("isPreset", script.isPreset)
+            putOpt("releaseTag", script.releaseTag)
             put("header", headerToJson(script.header))
         }
     }
@@ -29,6 +30,7 @@ internal object ScriptSerializer {
             content = content,
             enabled = json.optBoolean("enabled", false),
             isPreset = json.optBoolean("isPreset", false),
+            releaseTag = json.optString("releaseTag", null),
         )
     }
 

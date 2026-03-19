@@ -8,4 +8,6 @@ data class UserScript(
     val content: String,
     val enabled: Boolean = false,
     val isPreset: Boolean = false,
+    /** Тег GitHub-релиза, из которого был установлен скрипт (например "v6.14.0"). */
+    val releaseTag: String? = null,
 )

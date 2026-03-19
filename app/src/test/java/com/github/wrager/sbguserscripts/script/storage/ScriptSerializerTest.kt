@@ -34,6 +34,7 @@ class ScriptSerializerTest {
             content = "console.log('test')",
             enabled = true,
             isPreset = true,
+            releaseTag = "v1.0.0",
         )
 
         val json = ScriptSerializer.toJson(script)
@@ -56,6 +57,7 @@ class ScriptSerializerTest {
         assertEquals(script.content, restored.content)
         assertTrue(restored.enabled)
         assertTrue(restored.isPreset)
+        assertEquals("v1.0.0", restored.releaseTag)
     }
 
     @Test
@@ -78,6 +80,7 @@ class ScriptSerializerTest {
         assertNull(restored.updateUrl)
         assertFalse(restored.enabled)
         assertFalse(restored.isPreset)
+        assertNull(restored.releaseTag)
     }
 
     @Test
