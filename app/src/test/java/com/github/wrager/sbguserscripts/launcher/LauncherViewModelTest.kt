@@ -296,7 +296,7 @@ class LauncherViewModelTest {
             identifier = ScriptIdentifier("test/updatable"),
             version = "2.0.0",
         )
-        coEvery { downloader.download(any(), isPreset = false) } returns
+        coEvery { downloader.download(any(), isPreset = false, any()) } returns
             ScriptDownloadResult.Success(updatedScript)
         every { scriptStorage.setEnabled(any(), any()) } just Runs
 
@@ -306,7 +306,7 @@ class LauncherViewModelTest {
         viewModel.updateAllScripts()
         advanceUntilIdle()
 
-        coVerify { downloader.download(script.sourceUrl!!, isPreset = false) }
+        coVerify { downloader.download(script.sourceUrl!!, isPreset = false, any()) }
         verify { scriptStorage.setEnabled(updatedScript.identifier, script.enabled) }
     }
 
@@ -409,7 +409,7 @@ class LauncherViewModelTest {
         val script = testScript(version = "1.0.0", enabled = true)
         val updatedScript = testScript(version = "2.0.0", enabled = false)
         every { scriptStorage.getAll() } returns listOf(script)
-        coEvery { downloader.download(script.sourceUrl!!, isPreset = false) } answers {
+        coEvery { downloader.download(script.sourceUrl!!, isPreset = false, any()) } answers {
             every { scriptStorage.getAll() } returns listOf(updatedScript)
             ScriptDownloadResult.Success(updatedScript)
         }
@@ -431,7 +431,7 @@ class LauncherViewModelTest {
         val script = testScript(version = "1.0.0", enabled = true)
         val updatedScript = testScript(version = "2.0.0", enabled = false)
         every { scriptStorage.getAll() } returns listOf(script)
-        coEvery { downloader.download(script.sourceUrl!!, isPreset = false) } answers {
+        coEvery { downloader.download(script.sourceUrl!!, isPreset = false, any()) } answers {
             every { scriptStorage.getAll() } returns listOf(updatedScript)
             ScriptDownloadResult.Success(updatedScript)
         }
@@ -445,6 +445,32 @@ class LauncherViewModelTest {
         advanceUntilIdle()
 
         assertFalse(viewModel.uiState.value.reloadNeeded)
+    }
+
+    @Test
+    fun `updateScript shows progress during download`() = runTest {
+        val script = testScript(version = "1.0.0")
+        every { scriptStorage.getAll() } returns listOf(script)
+        val updatedScript = testScript(version = "2.0.0")
+        coEvery { downloader.download(script.sourceUrl!!, isPreset = false, any()) } answers {
+            @Suppress("UNCHECKED_CAST")
+            val onProgress = arg<((Int) -> Unit)?>(2)
+            onProgress?.invoke(50)
+            every { scriptStorage.getAll() } returns listOf(updatedScript)
+            ScriptDownloadResult.Success(updatedScript)
+        }
+        every { scriptStorage.setEnabled(any(), any()) } just Runs
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.updateScript(script.identifier)
+        advanceUntilIdle()
+
+        // После завершения прогресс должен быть сброшен
+        val item = viewModel.uiState.value.scripts.first { it.identifier == updatedScript.identifier }
+        assertNull(item.downloadProgress)
+        assertTrue(item.isUpToDate)
     }
 
     @Test

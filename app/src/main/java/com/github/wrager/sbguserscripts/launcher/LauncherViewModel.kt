@@ -171,7 +171,13 @@ class LauncherViewModel(
             val results = updateChecker.checkAllForUpdates()
             var updatedCount = 0
             results.filterIsInstance<ScriptUpdateResult.UpdateAvailable>().forEach { updateResult ->
-                val newIdentifier = applyUpdate(updateResult.identifier)
+                downloadProgressMap[updateResult.identifier] = 0
+                refreshScriptList()
+                val newIdentifier = applyUpdate(updateResult.identifier) { progress ->
+                    downloadProgressMap[updateResult.identifier] = progress
+                    refreshScriptList()
+                }
+                downloadProgressMap.remove(updateResult.identifier)
                 if (newIdentifier != null) {
                     updateAvailableIdentifiers.remove(updateResult.identifier)
                     upToDateIdentifiers.add(newIdentifier)
@@ -185,7 +191,13 @@ class LauncherViewModel(
 
     fun updateScript(identifier: ScriptIdentifier) {
         viewModelScope.launch {
-            val newIdentifier = applyUpdate(identifier)
+            downloadProgressMap[identifier] = 0
+            refreshScriptList()
+            val newIdentifier = applyUpdate(identifier) { progress ->
+                downloadProgressMap[identifier] = progress
+                refreshScriptList()
+            }
+            downloadProgressMap.remove(identifier)
             if (newIdentifier != null) {
                 updateAvailableIdentifiers.remove(identifier)
                 upToDateIdentifiers.add(newIdentifier)
@@ -275,10 +287,13 @@ class LauncherViewModel(
         }
     }
 
-    private suspend fun applyUpdate(identifier: ScriptIdentifier): ScriptIdentifier? {
+    private suspend fun applyUpdate(
+        identifier: ScriptIdentifier,
+        onProgress: ((Int) -> Unit)? = null,
+    ): ScriptIdentifier? {
         val script = scriptStorage.getAll().find { it.identifier == identifier } ?: return null
         val downloadUrl = script.sourceUrl ?: return null
-        val downloadResult = downloader.download(downloadUrl, isPreset = script.isPreset)
+        val downloadResult = downloader.download(downloadUrl, isPreset = script.isPreset, onProgress)
         if (downloadResult is ScriptDownloadResult.Success) {
             scriptStorage.setEnabled(downloadResult.script.identifier, script.enabled)
             return downloadResult.script.identifier
