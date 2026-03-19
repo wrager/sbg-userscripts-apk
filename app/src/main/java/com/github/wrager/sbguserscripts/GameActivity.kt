@@ -83,6 +83,11 @@ class GameActivity : AppCompatActivity() {
         webView.restoreState(savedInstanceState)
     }
 
+    override fun onPause() {
+        super.onPause()
+        CookieManager.getInstance().flush()
+    }
+
     private fun configureCookies() {
         val cookieManager = CookieManager.getInstance()
         cookieManager.setAcceptCookie(true)
