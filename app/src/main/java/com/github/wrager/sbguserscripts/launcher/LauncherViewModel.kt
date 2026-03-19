@@ -243,7 +243,13 @@ class LauncherViewModel(
     fun installVersion(identifier: ScriptIdentifier, downloadUrl: String, isLatest: Boolean) {
         viewModelScope.launch {
             val script = scriptStorage.getAll().find { it.identifier == identifier } ?: return@launch
-            val result = downloader.download(downloadUrl, isPreset = script.isPreset)
+            downloadProgressMap[identifier] = 0
+            refreshScriptList()
+            val result = downloader.download(downloadUrl, isPreset = script.isPreset) { progress ->
+                downloadProgressMap[identifier] = progress
+                refreshScriptList()
+            }
+            downloadProgressMap.remove(identifier)
             when (result) {
                 is ScriptDownloadResult.Success -> {
                     cleanupOldIdentifier(identifier, result.script.identifier)
@@ -278,7 +284,13 @@ class LauncherViewModel(
         viewModelScope.launch {
             val script = scriptStorage.getAll().find { it.identifier == identifier } ?: return@launch
             val sourceUrl = script.sourceUrl ?: return@launch
-            val result = downloader.download(sourceUrl, isPreset = script.isPreset)
+            downloadProgressMap[identifier] = 0
+            refreshScriptList()
+            val result = downloader.download(sourceUrl, isPreset = script.isPreset) { progress ->
+                downloadProgressMap[identifier] = progress
+                refreshScriptList()
+            }
+            downloadProgressMap.remove(identifier)
             when (result) {
                 is ScriptDownloadResult.Success -> {
                     cleanupOldIdentifier(identifier, result.script.identifier)

@@ -389,7 +389,7 @@ class LauncherViewModelTest {
         every { scriptStorage.getAll() } returns listOf(script)
         val updatedScript = testScript(version = "2.0.0", enabled = false)
         coEvery {
-            downloader.download("https://example.com/v2/script.user.js", isPreset = false)
+            downloader.download("https://example.com/v2/script.user.js", isPreset = false, any())
         } returns ScriptDownloadResult.Success(updatedScript)
         every { scriptStorage.setEnabled(any(), any()) } just Runs
 
@@ -490,7 +490,7 @@ class LauncherViewModelTest {
 
         val olderScript = testScript(version = "1.0.0", enabled = false)
         coEvery {
-            downloader.download("https://example.com/v1/script.user.js", isPreset = false)
+            downloader.download("https://example.com/v1/script.user.js", isPreset = false, any())
         } returns ScriptDownloadResult.Success(olderScript)
         every { scriptStorage.setEnabled(any(), any()) } just Runs
         every { scriptStorage.getAll() } returns listOf(olderScript)
@@ -512,7 +512,7 @@ class LauncherViewModelTest {
         val script = testScript(enabled = true)
         every { scriptStorage.getAll() } returns listOf(script)
         coEvery {
-            downloader.download(script.sourceUrl!!, isPreset = false)
+            downloader.download(script.sourceUrl!!, isPreset = false, any())
         } returns ScriptDownloadResult.Success(script)
         every { scriptStorage.setEnabled(any(), any()) } just Runs
 
@@ -522,7 +522,7 @@ class LauncherViewModelTest {
         viewModel.reinstallScript(script.identifier)
         advanceUntilIdle()
 
-        coVerify { downloader.download(script.sourceUrl!!, isPreset = false) }
+        coVerify { downloader.download(script.sourceUrl!!, isPreset = false, any()) }
         verify { scriptStorage.setEnabled(script.identifier, true) }
     }
 
