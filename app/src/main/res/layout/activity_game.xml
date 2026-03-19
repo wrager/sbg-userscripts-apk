@@ -9,15 +9,15 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
+    <ImageButton
         android:id="@+id/settingsButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
         android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
-        android:alpha="0.6"
+        android:layout_margin="8dp"
+        android:background="@drawable/bg_settings_button"
         android:contentDescription="@string/settings"
-        app:fabSize="mini"
-        app:srcCompat="@drawable/ic_settings" />
+        android:src="@drawable/ic_settings"
+        app:tint="@android:color/white" />
 
 </FrameLayout>

@@ -20,8 +20,8 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.preference.PreferenceManager
+import android.widget.ImageButton
 import com.github.wrager.sbguserscripts.settings.SettingsActivity
-import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.github.wrager.sbguserscripts.bridge.ClipboardBridge
 import com.github.wrager.sbguserscripts.bridge.ShareBridge
 import com.github.wrager.sbguserscripts.script.injector.ScriptInjector
@@ -59,15 +59,16 @@ class GameActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_game)
-
-        webView = findViewById(R.id.gameWebView)
 
         val isFullscreen = PreferenceManager.getDefaultSharedPreferences(this)
             .getBoolean(KEY_FULLSCREEN_MODE, false)
         if (isFullscreen) {
             enableImmersiveMode()
         }
+
+        setContentView(R.layout.activity_game)
+        webView = findViewById(R.id.gameWebView)
+
         setupWebView()
         setupBackPressHandling()
         setupSettingsButton()
@@ -176,7 +177,7 @@ class GameActivity : AppCompatActivity() {
             PackageManager.PERMISSION_GRANTED
 
     private fun setupSettingsButton() {
-        findViewById<FloatingActionButton>(R.id.settingsButton).setOnClickListener {
+        findViewById<ImageButton>(R.id.settingsButton).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
     }
