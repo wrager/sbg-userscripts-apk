@@ -59,7 +59,8 @@ class LauncherActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-        if (prefs.getBoolean(KEY_SETUP_COMPLETED, false)) {
+        val openedFromSettings = intent.getBooleanExtra(EXTRA_FROM_SETTINGS, false)
+        if (!openedFromSettings && prefs.getBoolean(KEY_SETUP_COMPLETED, false)) {
             startActivity(Intent(this, GameActivity::class.java))
             finish()
             return
@@ -68,7 +69,7 @@ class LauncherActivity : AppCompatActivity() {
         setContentView(R.layout.activity_launcher)
         setupToolbar()
         setupScriptList()
-        setupButtons()
+        setupButtons(showLaunchButton = !openedFromSettings)
         observeViewModel()
     }
 
@@ -105,11 +106,16 @@ class LauncherActivity : AppCompatActivity() {
         )
     }
 
-    private fun setupButtons() {
-        findViewById<MaterialButton>(R.id.launchButton).setOnClickListener {
-            PreferenceManager.getDefaultSharedPreferences(this)
-                .edit().putBoolean(KEY_SETUP_COMPLETED, true).apply()
-            startActivity(Intent(this, GameActivity::class.java))
+    private fun setupButtons(showLaunchButton: Boolean) {
+        val launchButton = findViewById<MaterialButton>(R.id.launchButton)
+        if (showLaunchButton) {
+            launchButton.setOnClickListener {
+                PreferenceManager.getDefaultSharedPreferences(this)
+                    .edit().putBoolean(KEY_SETUP_COMPLETED, true).apply()
+                startActivity(Intent(this, GameActivity::class.java))
+            }
+        } else {
+            launchButton.visibility = View.GONE
         }
         findViewById<FloatingActionButton>(R.id.addScriptButton).setOnClickListener {
             showAddScriptDialog()
@@ -267,6 +273,7 @@ class LauncherActivity : AppCompatActivity() {
     }
 
     companion object {
+        const val EXTRA_FROM_SETTINGS = "from_settings"
         private const val KEY_SETUP_COMPLETED = "setup_completed"
     }
 }

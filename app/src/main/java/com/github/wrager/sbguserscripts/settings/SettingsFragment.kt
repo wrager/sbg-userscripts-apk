@@ -18,7 +18,9 @@ class SettingsFragment : PreferenceFragmentCompat() {
             getString(R.string.settings_version_value, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
 
         findPreference<Preference>("manage_scripts")?.setOnPreferenceClickListener {
-            startActivity(Intent(requireContext(), LauncherActivity::class.java))
+            val intent = Intent(requireContext(), LauncherActivity::class.java)
+            intent.putExtra(LauncherActivity.EXTRA_FROM_SETTINGS, true)
+            startActivity(intent)
             true
         }
 
