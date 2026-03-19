@@ -21,6 +21,7 @@ data class ScriptUiItem(
     val downloadProgress: Int? = null,
     val isJustInstalled: Boolean = false,
     val isUpToDate: Boolean = false,
+    val hasUpdateAvailable: Boolean = false,
 ) {
     val isGithubHosted: Boolean
         get() = sourceUrl != null &&
