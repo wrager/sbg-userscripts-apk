@@ -4,6 +4,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -32,6 +33,7 @@ class ScriptListAdapter(
         private val nameText: TextView = itemView.findViewById(R.id.scriptName)
         private val detailsText: TextView = itemView.findViewById(R.id.scriptDetails)
         private val downloadStatusText: TextView = itemView.findViewById(R.id.downloadStatusText)
+        private val statusCheckmark: ImageView = itemView.findViewById(R.id.statusCheckmark)
         private val toggle: SwitchCompat = itemView.findViewById(R.id.scriptToggle)
         private val actionButton: ImageButton = itemView.findViewById(R.id.actionButton)
         private val conflictWarning: TextView = itemView.findViewById(R.id.conflictWarning)
@@ -59,17 +61,26 @@ class ScriptListAdapter(
                         item.downloadProgress,
                     )
                     downloadStatusText.visibility = View.VISIBLE
+                    statusCheckmark.visibility = View.GONE
                 }
                 item.isUpToDate -> {
                     downloadStatusText.text = itemView.context.getString(R.string.status_up_to_date)
                     downloadStatusText.visibility = View.VISIBLE
+                    statusCheckmark.visibility = View.GONE
+                }
+                item.hasUpdateAvailable -> {
+                    downloadStatusText.text =
+                        itemView.context.getString(R.string.status_update_available)
+                    downloadStatusText.visibility = View.VISIBLE
+                    statusCheckmark.visibility = View.GONE
                 }
                 item.isJustInstalled -> {
-                    downloadStatusText.text = itemView.context.getString(R.string.status_downloaded)
-                    downloadStatusText.visibility = View.VISIBLE
+                    downloadStatusText.visibility = View.GONE
+                    statusCheckmark.visibility = View.VISIBLE
                 }
                 else -> {
                     downloadStatusText.visibility = View.GONE
+                    statusCheckmark.visibility = View.GONE
                 }
             }
         }

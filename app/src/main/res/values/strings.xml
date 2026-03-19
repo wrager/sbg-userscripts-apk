@@ -23,6 +23,7 @@
     <string name="downloading_progress">Downloading %d%%</string>
     <string name="status_downloaded">Downloaded</string>
     <string name="status_up_to_date">Up to date</string>
+    <string name="status_update_available">Update available</string>
     <string name="download_script">Download</string>
     <string name="download_hint">Script download. Enabling is configured separately.</string>
     <string name="checking_updates">Checking for updates\u2026</string>
