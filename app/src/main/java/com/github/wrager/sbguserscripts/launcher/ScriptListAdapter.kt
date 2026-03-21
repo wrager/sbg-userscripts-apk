@@ -142,15 +142,17 @@ class ScriptListAdapter(
                         loadingProgress.visibility = View.INVISIBLE
                         loadingProgress.isIndeterminate = false
                     }
-                    loadingProgress.progress = item.downloadProgress
-                    loadingProgress.visibility = View.VISIBLE
+                    loadingProgress.setProgressCompat(item.downloadProgress, true)
+                    // show() инициализирует внутреннее состояние рендеринга;
+                    // прямое visibility = VISIBLE пропускает эту инициализацию
+                    loadingProgress.show()
                 }
                 item.isCheckingUpdate -> {
                     if (!loadingProgress.isIndeterminate) {
                         loadingProgress.visibility = View.INVISIBLE
                         loadingProgress.isIndeterminate = true
                     }
-                    loadingProgress.visibility = View.VISIBLE
+                    loadingProgress.show()
                 }
                 else -> {
                     loadingProgress.visibility = View.INVISIBLE
