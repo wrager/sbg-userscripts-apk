@@ -80,10 +80,6 @@ class LauncherViewModel(
 
     fun downloadScript(identifier: ScriptIdentifier) {
         if (identifier in downloadProgressMap) return
-        val alreadyDownloaded = _uiState.value.scripts.any {
-            it.identifier == identifier && it.isDownloaded
-        }
-        if (alreadyDownloaded) return
         val job = viewModelScope.launch {
             val preset = PresetScripts.ALL.find { it.identifier == identifier } ?: return@launch
             downloadProgressMap[identifier] = 0
