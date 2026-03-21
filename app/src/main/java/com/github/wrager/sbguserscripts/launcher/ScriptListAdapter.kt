@@ -100,7 +100,7 @@ class ScriptListAdapter(
 
             latestStatus.text = itemView.context.getString(R.string.status_up_to_date)
             latestStatus.visibility = when {
-                item.isUpToDate -> View.VISIBLE
+                item.operationState is ScriptOperationState.UpToDate -> View.VISIBLE
                 hasVersion -> View.INVISIBLE
                 else -> View.GONE
             }
@@ -135,8 +135,8 @@ class ScriptListAdapter(
             downloadStatusText.setTextColor(defaultStatusTextColor)
             downloadStatusText.setOnClickListener(null)
             downloadStatusText.isClickable = false
-            when {
-                item.hasUpdateAvailable -> {
+            when (item.operationState) {
+                is ScriptOperationState.UpdateAvailable -> {
                     val primaryColor = MaterialColors.getColor(
                         itemView.context, com.google.android.material.R.attr.colorPrimary, 0,
                     )
@@ -155,18 +155,18 @@ class ScriptListAdapter(
         }
 
         private fun bindLoadingProgress(item: ScriptUiItem) {
-            when {
-                item.downloadProgress != null -> {
+            when (val state = item.operationState) {
+                is ScriptOperationState.Downloading -> {
                     // progress == 0: соединение устанавливается, данные ещё не пошли
-                    if (item.downloadProgress == 0) {
+                    if (state.progress == 0) {
                         loadingProgress.isIndeterminate = true
                     } else {
                         loadingProgress.isIndeterminate = false
-                        loadingProgress.progress = item.downloadProgress
+                        loadingProgress.progress = state.progress
                     }
                     loadingProgress.visibility = View.VISIBLE
                 }
-                item.isCheckingUpdate -> {
+                is ScriptOperationState.CheckingUpdate -> {
                     loadingProgress.isIndeterminate = true
                     loadingProgress.visibility = View.VISIBLE
                 }
@@ -177,7 +177,7 @@ class ScriptListAdapter(
         }
 
         private fun bindControls(item: ScriptUiItem) {
-            val isDownloading = item.downloadProgress != null
+            val isDownloading = item.operationState is ScriptOperationState.Downloading
 
             if (item.isDownloaded) {
                 toggle.visibility = View.VISIBLE

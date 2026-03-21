@@ -101,7 +101,7 @@ class LauncherViewModelTest {
 
         val svpItem = viewModel.uiState.value.scripts.first { it.identifier == PresetScripts.SVP.identifier }
         assertFalse(svpItem.isDownloaded)
-        assertNull(svpItem.downloadProgress)
+        assertNull(svpItem.operationState)
     }
 
     @Test
@@ -145,7 +145,7 @@ class LauncherViewModelTest {
         advanceUntilIdle()
 
         val svpItem = viewModel.uiState.value.scripts.first { it.identifier == PresetScripts.SVP.identifier }
-        assertNull(svpItem.downloadProgress)
+        assertNull(svpItem.operationState)
     }
 
     @Test
@@ -384,7 +384,7 @@ class LauncherViewModelTest {
             scriptStorage.save(match { it.enabled && it.releaseTag == "v2.0.0" })
         }
         val item = viewModel.uiState.value.scripts.first { it.identifier == updatedScript.identifier }
-        assertTrue(item.isUpToDate)
+        assertEquals(ScriptOperationState.UpToDate, item.operationState)
     }
 
     @Test
@@ -450,10 +450,9 @@ class LauncherViewModelTest {
         viewModel.updateScript(script.identifier)
         advanceUntilIdle()
 
-        // После завершения прогресс должен быть сброшен
+        // После завершения прогресс должен быть сброшен, состояние — UpToDate
         val item = viewModel.uiState.value.scripts.first { it.identifier == updatedScript.identifier }
-        assertNull(item.downloadProgress)
-        assertTrue(item.isUpToDate)
+        assertEquals(ScriptOperationState.UpToDate, item.operationState)
     }
 
     @Test
@@ -472,7 +471,7 @@ class LauncherViewModelTest {
         advanceUntilIdle()
 
         val itemBefore = viewModel.uiState.value.scripts.first { it.identifier == script.identifier }
-        assertTrue(itemBefore.isUpToDate)
+        assertEquals(ScriptOperationState.UpToDate, itemBefore.operationState)
 
         val olderScript = testScript(version = "1.0.0", enabled = false)
         coEvery {
@@ -492,8 +491,35 @@ class LauncherViewModelTest {
         advanceUntilIdle()
 
         val itemAfter = viewModel.uiState.value.scripts.first { it.identifier == olderScript.identifier }
-        assertTrue(itemAfter.hasUpdateAvailable)
-        assertFalse(itemAfter.isUpToDate)
+        assertEquals(ScriptOperationState.UpdateAvailable, itemAfter.operationState)
+    }
+
+    @Test
+    fun `deleteScript clears operation state`() = runTest {
+        val script = testScript()
+        val scriptList = mutableListOf(script)
+        every { scriptStorage.getAll() } answers { scriptList.toList() }
+        every { scriptStorage.delete(script.identifier) } answers { scriptList.clear() }
+        coEvery { updateChecker.checkAllForUpdates() } returns listOf(
+            ScriptUpdateResult.UpToDate(script.identifier),
+        )
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // Проверка обновлений помечает скрипт как UpToDate
+        viewModel.checkUpdates()
+        advanceUntilIdle()
+
+        val itemBefore = viewModel.uiState.value.scripts.first { it.identifier == script.identifier }
+        assertEquals(ScriptOperationState.UpToDate, itemBefore.operationState)
+
+        // Удаление должно очистить состояние операции
+        viewModel.deleteScript(script.identifier)
+        advanceUntilIdle()
+
+        val deletedItem = viewModel.uiState.value.scripts.find { it.identifier == script.identifier }
+        assertNull(deletedItem)
     }
 
     @Test

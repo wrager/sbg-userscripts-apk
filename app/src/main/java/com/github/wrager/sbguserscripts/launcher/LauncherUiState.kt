@@ -9,6 +9,13 @@ data class LauncherUiState(
     val reloadNeeded: Boolean = false,
 )
 
+sealed class ScriptOperationState {
+    data class Downloading(val progress: Int) : ScriptOperationState()
+    data object CheckingUpdate : ScriptOperationState()
+    data object UpToDate : ScriptOperationState()
+    data object UpdateAvailable : ScriptOperationState()
+}
+
 data class ScriptUiItem(
     val identifier: ScriptIdentifier,
     val name: String,
@@ -20,10 +27,7 @@ data class ScriptUiItem(
     val conflictNames: List<String>,
     val sourceUrl: String?,
     val isDownloaded: Boolean = true,
-    val downloadProgress: Int? = null,
-    val isCheckingUpdate: Boolean = false,
-    val isUpToDate: Boolean = false,
-    val hasUpdateAvailable: Boolean = false,
+    val operationState: ScriptOperationState? = null,
 ) {
     val isGithubHosted: Boolean
         get() = sourceUrl != null &&
