@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
+import android.view.inputmethod.InputMethodManager
 import android.webkit.ConsoleMessage
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
@@ -137,12 +138,19 @@ class GameActivity : AppCompatActivity() {
         // Edge-to-edge всегда включён (обязательно на Android 15+).
         // В неполноэкранном режиме сдвигаем корневой layout паддингами,
         // чтобы WebView не залезал под системные бары.
+        // IME-инсеты учитываются всегда, чтобы клавиатура не перекрывала input.
         ViewCompat.setOnApplyWindowInsetsListener(rootLayout) { view, windowInsets ->
+            val imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime())
             if (isFullscreen) {
-                view.setPadding(0, 0, 0, 0)
+                view.setPadding(0, 0, 0, imeInsets.bottom)
             } else {
-                val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
-                view.setPadding(insets.left, insets.top, insets.right, insets.bottom)
+                val barInsets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+                view.setPadding(
+                    barInsets.left,
+                    barInsets.top,
+                    barInsets.right,
+                    maxOf(barInsets.bottom, imeInsets.bottom),
+                )
             }
             windowInsets
         }
@@ -269,6 +277,15 @@ class GameActivity : AppCompatActivity() {
         }
 
         drawerLayout.addDrawerListener(object : DrawerLayout.SimpleDrawerListener() {
+            override fun onDrawerStateChanged(newState: Int) {
+                // Скрыть клавиатуру при начале открытия drawer,
+                // чтобы она не торчала поверх экрана настроек
+                if (newState != DrawerLayout.STATE_IDLE) {
+                    val imm = getSystemService(InputMethodManager::class.java)
+                    currentFocus?.let { imm.hideSoftInputFromWindow(it.windowToken, 0) }
+                }
+            }
+
             override fun onDrawerSlide(drawerView: View, slideOffset: Float) {
                 pullTab.translationX = slideOffset * drawerView.width
             }
