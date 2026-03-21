@@ -23,7 +23,8 @@ class ScriptListAdapter(
     private val onAddScriptClick: () -> Unit,
 ) : ListAdapter<ScriptUiItem, RecyclerView.ViewHolder>(DIFF_CALLBACK) {
 
-    override fun getItemCount(): Int = super.getItemCount() + 1
+    // Кнопка «Добавить скрипт» временно отключена
+    override fun getItemCount(): Int = super.getItemCount()
 
     override fun getItemViewType(position: Int): Int =
         if (position < super.getItemCount()) VIEW_TYPE_SCRIPT else VIEW_TYPE_ADD_BUTTON
