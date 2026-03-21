@@ -16,6 +16,7 @@ class ScriptInjector(
 ) {
 
     fun inject(webView: WebView, callback: (List<InjectionResult>) -> Unit = {}) {
+        injectDocumentWriteEventFix(webView)
         injectGlobalVariables(webView)
         injectClipboardPolyfill(webView)
         val enabledScripts = scriptStorage.getEnabled()
@@ -28,6 +29,10 @@ class ScriptInjector(
             injectScript(webView, script)
         }
         collectErrors(webView, enabledScripts, callback)
+    }
+
+    private fun injectDocumentWriteEventFix(webView: WebView) {
+        webView.evaluateJavascript(DOCUMENT_WRITE_EVENT_FIX) {}
     }
 
     private fun injectGlobalVariables(webView: WebView) {
@@ -151,6 +156,79 @@ class ScriptInjector(
                 emptyMap()
             }
         }
+
+        // Workaround: document.write() в некоторых версиях WebView (в т.ч. 101)
+        // сбрасывает window event listeners. CUI регистрирует olReady/mapReady
+        // listeners после document.open(), затем вызывает document.write() для
+        // перестройки страницы. olReady диспатчится ВНУТРИ document.write()
+        // (из onload OL-скрипта), но listener уже потерян.
+        // Фикс: сохраняем *Ready listeners при регистрации. После document.close()
+        // перерегистрируем потерянные listeners и re-dispatch события.
+        private val DOCUMENT_WRITE_EVENT_FIX = """
+            (function() {
+                var insideDocWrite = false;
+                var lostEvents = [];
+                var listenersCalledDuringWrite = {};
+                var savedListeners = [];
+
+                var origAddEventListener = EventTarget.prototype.addEventListener;
+                EventTarget.prototype.addEventListener = function(type, fn, opts) {
+                    if (this === window && /Ready/i.test(type)) {
+                        savedListeners.push({ type: type, fn: fn, opts: opts });
+                        var wrappedFn = function(event) {
+                            if (insideDocWrite) {
+                                listenersCalledDuringWrite[type] = true;
+                            }
+                            return fn.call(this, event);
+                        };
+                        return origAddEventListener.call(this, type, wrappedFn, opts);
+                    }
+                    return origAddEventListener.call(this, type, fn, opts);
+                };
+
+                var origDispatch = window.dispatchEvent.bind(window);
+                window.dispatchEvent = function(event) {
+                    var result = origDispatch(event);
+                    var eventType = event && event.type ? event.type : '';
+                    if (insideDocWrite && /Ready/i.test(eventType)) {
+                        if (!listenersCalledDuringWrite[eventType]) {
+                            lostEvents.push(eventType);
+                        }
+                    }
+                    return result;
+                };
+
+                var origDocWrite = Document.prototype.write;
+                Document.prototype.write = function() {
+                    insideDocWrite = true;
+                    listenersCalledDuringWrite = {};
+                    try {
+                        return origDocWrite.apply(this, arguments);
+                    } finally {
+                        insideDocWrite = false;
+                    }
+                };
+
+                var origDocClose = Document.prototype.close;
+                Document.prototype.close = function() {
+                    var result = origDocClose.apply(this, arguments);
+                    if (lostEvents.length > 0) {
+                        var events = lostEvents.slice();
+                        lostEvents = [];
+                        // Перерегистрируем потерянные listeners
+                        savedListeners.forEach(function(entry) {
+                            origAddEventListener.call(window, entry.type, entry.fn, entry.opts);
+                        });
+                        // Re-dispatch потерянных событий
+                        events.forEach(function(eventType) {
+                            console.log('[SBG Fix] Re-dispatching lost event:', eventType);
+                            window.dispatchEvent(new Event(eventType));
+                        });
+                    }
+                    return result;
+                };
+            })();
+        """.trimIndent()
 
         private val CLIPBOARD_POLYFILL = """
             (function() {

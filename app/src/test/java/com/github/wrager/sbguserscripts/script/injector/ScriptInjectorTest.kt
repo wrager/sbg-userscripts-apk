@@ -102,8 +102,8 @@ class ScriptInjectorTest {
 
         injector.inject(webView)
 
-        // globals + polyfill = 2 вызова evaluateJavascript
-        verify(exactly = 2) {
+        // document.write event fix + globals + polyfill = 3 вызова evaluateJavascript
+        verify(exactly = 3) {
             webView.evaluateJavascript(any(), any<ValueCallback<String>>())
         }
     }
@@ -117,8 +117,8 @@ class ScriptInjectorTest {
 
         injector.inject(webView)
 
-        // globals + polyfill + 2 скрипта + 1 collectErrors = 5 вызовов
-        verify(exactly = 5) {
+        // document.write event fix + globals + polyfill + 2 скрипта + 1 collectErrors = 6 вызовов
+        verify(exactly = 6) {
             webView.evaluateJavascript(any(), any<ValueCallback<String>>())
         }
     }
@@ -143,7 +143,8 @@ class ScriptInjectorTest {
 
         injector.inject(webView)
 
-        val globalsScript = capturedScripts.first()
+        // [0] = document.write event fix, [1] = globals
+        val globalsScript = capturedScripts[1]
         assertTrue(globalsScript.contains("window.__sbg_package = 'com.github.wrager.sbguserscripts'"))
         assertTrue(globalsScript.contains("window.__sbg_package_version = '1.0'"))
     }
@@ -160,8 +161,8 @@ class ScriptInjectorTest {
 
         injector.inject(webView)
 
-        // Третий вызов — скрипт (после globals и polyfill)
-        val scriptCall = capturedScripts[2]
+        // Четвёртый вызов — скрипт (после event fix, globals и polyfill)
+        val scriptCall = capturedScripts[3]
         assertTrue(scriptCall.contains("(function() {"))
         assertTrue(scriptCall.contains("try {"))
         assertTrue(scriptCall.contains("alert(1);"))
@@ -179,7 +180,8 @@ class ScriptInjectorTest {
 
         injector.inject(webView)
 
-        val polyfillScript = capturedScripts[1]
+        // [0] = document.write event fix, [1] = globals, [2] = polyfill
+        val polyfillScript = capturedScripts[2]
         assertTrue(polyfillScript.contains("navigator.clipboard"))
         assertTrue(polyfillScript.contains("Android.readText()"))
         assertTrue(polyfillScript.contains("Android.writeText(text)"))
@@ -266,6 +268,100 @@ class ScriptInjectorTest {
         injector.inject(webView) { callbackResults = it }
 
         assertEquals(emptyList<InjectionResult>(), callbackResults)
+    }
+
+    @Test
+    fun `inject injects document write event fix as first script`() {
+        every { scriptStorage.getEnabled() } returns emptyList()
+        val capturedScripts = mutableListOf<String>()
+        every {
+            webView.evaluateJavascript(capture(capturedScripts), any<ValueCallback<String>>())
+        } returns Unit
+
+        injector.inject(webView)
+
+        val fixScript = capturedScripts[0]
+        assertTrue(
+            "Фикс должен перехватывать addEventListener",
+            fixScript.contains("EventTarget.prototype.addEventListener"),
+        )
+        assertTrue(
+            "Фикс должен перехватывать document.write",
+            fixScript.contains("Document.prototype.write"),
+        )
+        assertTrue(
+            "Фикс должен перехватывать document.close",
+            fixScript.contains("Document.prototype.close"),
+        )
+        assertTrue(
+            "Фикс должен перехватывать dispatchEvent",
+            fixScript.contains("window.dispatchEvent"),
+        )
+    }
+
+    @Test
+    fun `document write event fix saves Ready listeners for re-registration`() {
+        every { scriptStorage.getEnabled() } returns emptyList()
+        val capturedScripts = mutableListOf<String>()
+        every {
+            webView.evaluateJavascript(capture(capturedScripts), any<ValueCallback<String>>())
+        } returns Unit
+
+        injector.inject(webView)
+
+        val fixScript = capturedScripts[0]
+        assertTrue(
+            "Фикс должен сохранять listeners в массив",
+            fixScript.contains("savedListeners.push"),
+        )
+        assertTrue(
+            "Фикс должен фильтровать по паттерну Ready",
+            fixScript.contains("Ready"),
+        )
+    }
+
+    @Test
+    fun `document write event fix re-registers listeners after document close`() {
+        every { scriptStorage.getEnabled() } returns emptyList()
+        val capturedScripts = mutableListOf<String>()
+        every {
+            webView.evaluateJavascript(capture(capturedScripts), any<ValueCallback<String>>())
+        } returns Unit
+
+        injector.inject(webView)
+
+        val fixScript = capturedScripts[0]
+        // После document.close перерегистрируем listeners и re-dispatch события
+        assertTrue(
+            "Фикс должен перерегистрировать listeners через origAddEventListener",
+            fixScript.contains("origAddEventListener.call(window, entry.type, entry.fn"),
+        )
+        assertTrue(
+            "Фикс должен re-dispatch потерянных событий",
+            fixScript.contains("Re-dispatching lost event"),
+        )
+    }
+
+    @Test
+    fun `document write event fix tracks listener calls during document write`() {
+        every { scriptStorage.getEnabled() } returns emptyList()
+        val capturedScripts = mutableListOf<String>()
+        every {
+            webView.evaluateJavascript(capture(capturedScripts), any<ValueCallback<String>>())
+        } returns Unit
+
+        injector.inject(webView)
+
+        val fixScript = capturedScripts[0]
+        // Должен отслеживать insideDocWrite и listenersCalledDuringWrite
+        assertTrue(
+            "Фикс должен отслеживать состояние insideDocWrite",
+            fixScript.contains("insideDocWrite"),
+        )
+        assertTrue(
+            "Фикс должен трекать вызовы listeners во время document.write",
+            fixScript.contains("listenersCalledDuringWrite"),
+        )
     }
 
     private fun createTestScript(
