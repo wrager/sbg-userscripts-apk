@@ -14,6 +14,7 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
@@ -33,17 +34,22 @@ import com.github.wrager.sbguserscripts.bridge.ShareBridge
 import com.github.wrager.sbguserscripts.launcher.LauncherActivity
 import com.github.wrager.sbguserscripts.script.injector.InjectionStateStorage
 import com.github.wrager.sbguserscripts.script.injector.ScriptInjector
+import com.github.wrager.sbguserscripts.script.provisioner.DefaultScriptProvisioner
 import com.github.wrager.sbguserscripts.script.storage.ScriptFileStorageImpl
 import com.github.wrager.sbguserscripts.script.storage.ScriptStorage
 import com.github.wrager.sbguserscripts.script.storage.ScriptStorageImpl
+import com.github.wrager.sbguserscripts.script.updater.DefaultHttpFetcher
+import com.github.wrager.sbguserscripts.script.updater.ScriptDownloader
 import com.github.wrager.sbguserscripts.webview.SbgWebViewClient
 import java.io.File
+import kotlinx.coroutines.launch
 
 class GameActivity : AppCompatActivity() {
 
     private lateinit var rootLayout: FrameLayout
     private lateinit var webView: WebView
     private lateinit var scriptStorage: ScriptStorage
+    private lateinit var scriptProvisioner: DefaultScriptProvisioner
     private var isFullscreen = false
 
     // Pending geolocation callback while waiting for Android permission result
@@ -80,7 +86,12 @@ class GameActivity : AppCompatActivity() {
         setupSettingsDrawer()
 
         if (savedInstanceState == null) {
-            webView.loadUrl(GAME_URL)
+            // Загрузить enabledByDefault-скрипты ДО открытия страницы,
+            // чтобы они были доступны для инъекции при onPageStarted
+            lifecycleScope.launch {
+                scriptProvisioner.provision()
+                webView.loadUrl(GAME_URL)
+            }
         }
     }
 
@@ -169,6 +180,9 @@ class GameActivity : AppCompatActivity() {
         val preferences = getSharedPreferences("scripts", MODE_PRIVATE)
         val fileStorage = ScriptFileStorageImpl(File(filesDir, "scripts"))
         scriptStorage = ScriptStorageImpl(preferences, fileStorage)
+        val httpFetcher = DefaultHttpFetcher()
+        val downloader = ScriptDownloader(httpFetcher, scriptStorage)
+        scriptProvisioner = DefaultScriptProvisioner(scriptStorage, downloader, preferences)
         val injectionStateStorage = InjectionStateStorage(preferences)
         val scriptInjector = ScriptInjector(
             scriptStorage = scriptStorage,

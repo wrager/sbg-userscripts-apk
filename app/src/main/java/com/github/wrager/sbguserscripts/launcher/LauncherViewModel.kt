@@ -68,6 +68,9 @@ class LauncherViewModel(
                 }
                 when (result) {
                     is ScriptDownloadResult.Success -> {
+                        if (preset.enabledByDefault) {
+                            scriptStorage.setEnabled(result.script.identifier, true)
+                        }
                         updateAvailableIdentifiers.remove(result.script.identifier)
                         upToDateIdentifiers.add(result.script.identifier)
                         refreshScriptList()

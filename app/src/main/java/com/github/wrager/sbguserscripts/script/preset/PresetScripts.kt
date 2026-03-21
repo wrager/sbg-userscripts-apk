@@ -11,6 +11,7 @@ object PresetScripts {
             "https://github.com/wrager/sbg-vanilla-plus/releases/latest/download/sbg-vanilla-plus.user.js",
         updateUrl =
             "https://github.com/wrager/sbg-vanilla-plus/releases/latest/download/sbg-vanilla-plus.meta.js",
+        enabledByDefault = true,
     )
 
     val EUI = PresetScript(

@@ -107,6 +107,7 @@ class LauncherViewModelTest {
     @Test
     fun `downloadScript marks script as downloaded after completion`() = runTest {
         every { scriptStorage.getAll() } returns emptyList()
+        every { scriptStorage.setEnabled(any(), any()) } just Runs
         val svpScript = testScript(identifier = PresetScripts.SVP.identifier, name = "SVP")
         coEvery {
             downloader.download(PresetScripts.SVP.downloadUrl, isPreset = true, any())
@@ -496,6 +497,55 @@ class LauncherViewModelTest {
     }
 
     @Test
+    fun `downloadScript enables script when preset has enabledByDefault`() = runTest {
+        every { scriptStorage.getAll() } returns emptyList()
+        every { scriptStorage.setEnabled(any(), any()) } just Runs
+        val svpScript = testScript(
+            identifier = PresetScripts.SVP.identifier,
+            name = "SVP",
+            isPreset = true,
+        )
+        coEvery {
+            downloader.download(PresetScripts.SVP.downloadUrl, isPreset = true, any())
+        } answers {
+            every { scriptStorage.getAll() } returns listOf(svpScript)
+            ScriptDownloadResult.Success(svpScript)
+        }
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.downloadScript(PresetScripts.SVP.identifier)
+        advanceUntilIdle()
+
+        verify { scriptStorage.setEnabled(svpScript.identifier, true) }
+    }
+
+    @Test
+    fun `downloadScript does not enable script when preset has no enabledByDefault`() = runTest {
+        every { scriptStorage.getAll() } returns emptyList()
+        val cuiScript = testScript(
+            identifier = PresetScripts.CUI.identifier,
+            name = "CUI",
+            isPreset = true,
+        )
+        coEvery {
+            downloader.download(PresetScripts.CUI.downloadUrl, isPreset = true, any())
+        } answers {
+            every { scriptStorage.getAll() } returns listOf(cuiScript)
+            ScriptDownloadResult.Success(cuiScript)
+        }
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.downloadScript(PresetScripts.CUI.identifier)
+        advanceUntilIdle()
+
+        verify(exactly = 0) { scriptStorage.setEnabled(any(), any()) }
+    }
+
+    @Test
     fun `reinstallScript re-downloads from sourceUrl`() = runTest {
         val script = testScript(enabled = true)
         every { scriptStorage.getAll() } returns listOf(script)
@@ -530,6 +580,7 @@ class LauncherViewModelTest {
         enabled: Boolean = false,
         sourceUrl: String = "https://example.com/script.user.js",
         releaseTag: String? = null,
+        isPreset: Boolean = false,
     ) = UserScript(
         identifier = identifier,
         header = ScriptHeader(name = name, version = version),
@@ -537,7 +588,7 @@ class LauncherViewModelTest {
         updateUrl = "https://example.com/script.meta.js",
         content = "console.log('test')",
         enabled = enabled,
-        isPreset = false,
+        isPreset = isPreset,
         releaseTag = releaseTag,
     )
 }
