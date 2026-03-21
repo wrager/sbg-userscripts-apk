@@ -27,16 +27,35 @@ class SettingsDrawerLayout @JvmOverloads constructor(
 
     private var isDragging = false
 
+    /**
+     * Флаг: ACTION_DOWN был отклонён (вне зоны таба при закрытом drawer).
+     * Все последующие события этого жеста тоже отклоняются, иначе
+     * ViewDragHelper получит MOVE/POINTER_DOWN без инициализации → NPE.
+     */
+    private var gestureRejected = false
+
     init {
         addDrawerListener(SnapOpenListener())
     }
 
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
-        // Ограничиваем зону касания только при закрытом drawer.
-        // При открытом — закрытие свайпом работает из любой точки.
-        val drawerClosed = !isDrawerOpen(GravityCompat.START)
-        if (drawerClosed && event.actionMasked == MotionEvent.ACTION_DOWN && !isTouchInTabArea(event.y)) {
-            return false
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                // Ограничиваем зону касания только при закрытом drawer.
+                // При открытом — закрытие свайпом работает из любой точки.
+                val drawerClosed = !isDrawerOpen(GravityCompat.START)
+                gestureRejected = drawerClosed && !isTouchInTabArea(event.y)
+                if (gestureRejected) return false
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                if (gestureRejected) {
+                    gestureRejected = false
+                    return false
+                }
+            }
+            else -> {
+                if (gestureRejected) return false
+            }
         }
         return super.onInterceptTouchEvent(event)
     }
