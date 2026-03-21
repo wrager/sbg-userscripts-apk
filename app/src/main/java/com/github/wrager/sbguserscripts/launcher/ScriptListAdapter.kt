@@ -156,8 +156,13 @@ class ScriptListAdapter(
         private fun bindLoadingProgress(item: ScriptUiItem) {
             when {
                 item.downloadProgress != null -> {
-                    loadingProgress.isIndeterminate = false
-                    loadingProgress.progress = item.downloadProgress
+                    // progress == 0: соединение устанавливается, данные ещё не пошли
+                    if (item.downloadProgress == 0) {
+                        loadingProgress.isIndeterminate = true
+                    } else {
+                        loadingProgress.isIndeterminate = false
+                        loadingProgress.progress = item.downloadProgress
+                    }
                     loadingProgress.visibility = View.VISIBLE
                 }
                 item.isCheckingUpdate -> {
