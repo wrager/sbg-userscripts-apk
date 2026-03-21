@@ -279,38 +279,6 @@ class LauncherViewModelTest {
     }
 
     @Test
-    fun `updateAllScripts downloads updates when available`() = runTest {
-        val script = testScript(
-            identifier = ScriptIdentifier("test/updatable"),
-            version = "1.0.0",
-        )
-        every { scriptStorage.getAll() } returns listOf(script)
-        coEvery { updateChecker.checkAllForUpdates() } returns listOf(
-            ScriptUpdateResult.UpdateAvailable(
-                script.identifier,
-                com.github.wrager.sbguserscripts.script.model.ScriptVersion("1.0.0"),
-                com.github.wrager.sbguserscripts.script.model.ScriptVersion("2.0.0"),
-            ),
-        )
-        val updatedScript = testScript(
-            identifier = ScriptIdentifier("test/updatable"),
-            version = "2.0.0",
-        )
-        coEvery { downloader.download(any(), isPreset = false, any()) } returns
-            ScriptDownloadResult.Success(updatedScript)
-        every { scriptStorage.setEnabled(any(), any()) } just Runs
-
-        val viewModel = createViewModel()
-        advanceUntilIdle()
-
-        viewModel.updateAllScripts()
-        advanceUntilIdle()
-
-        coVerify { downloader.download(script.sourceUrl!!, isPreset = false, any()) }
-        verify { scriptStorage.setEnabled(updatedScript.identifier, script.enabled) }
-    }
-
-    @Test
     fun `loadVersions sends VersionsLoaded event for GitHub script`() = runTest {
         val script = testScript(
             sourceUrl = "https://github.com/owner/repo/releases/latest/download/script.user.js",

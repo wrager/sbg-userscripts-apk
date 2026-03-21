@@ -113,10 +113,6 @@ class ScriptListFragment : Fragment() {
             viewModel.checkUpdates()
             Toast.makeText(requireContext(), R.string.checking_updates, Toast.LENGTH_SHORT).show()
         }
-        view.findViewById<MaterialButton>(R.id.updateAllButton).setOnClickListener {
-            viewModel.updateAllScripts()
-            Toast.makeText(requireContext(), R.string.checking_updates, Toast.LENGTH_SHORT).show()
-        }
     }
 
     private fun setupScriptList(view: View) {

@@ -125,10 +125,6 @@ class LauncherActivity : AppCompatActivity() {
             viewModel.checkUpdates()
             Toast.makeText(this, R.string.checking_updates, Toast.LENGTH_SHORT).show()
         }
-        findViewById<MaterialButton>(R.id.updateAllButton).setOnClickListener {
-            viewModel.updateAllScripts()
-            Toast.makeText(this, R.string.checking_updates, Toast.LENGTH_SHORT).show()
-        }
     }
 
     private fun setupScriptList() {

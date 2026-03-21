@@ -27,30 +27,12 @@
             android:layout_height="wrap_content"
             android:text="@string/settings_auto_update" />
 
-        <LinearLayout
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/checkUpdatesButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/checkUpdatesButton"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_marginEnd="4dp"
-                android:layout_weight="1"
-                android:text="@string/check_updates" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/updateAllButton"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_marginStart="4dp"
-                android:layout_weight="1"
-                android:text="@string/update_all" />
-
-        </LinearLayout>
+            android:text="@string/check_updates" />
 
     </LinearLayout>
 

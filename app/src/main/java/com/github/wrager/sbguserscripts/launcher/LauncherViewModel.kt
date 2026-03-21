@@ -189,29 +189,6 @@ class LauncherViewModel(
         }
     }
 
-    fun updateAllScripts() {
-        viewModelScope.launch {
-            val results = updateChecker.checkAllForUpdates()
-            var updatedCount = 0
-            results.filterIsInstance<ScriptUpdateResult.UpdateAvailable>().forEach { updateResult ->
-                downloadProgressMap[updateResult.identifier] = 0
-                refreshScriptList()
-                val newIdentifier = applyUpdate(updateResult.identifier) { progress ->
-                    downloadProgressMap[updateResult.identifier] = progress
-                    refreshScriptList()
-                }
-                downloadProgressMap.remove(updateResult.identifier)
-                if (newIdentifier != null) {
-                    updateAvailableIdentifiers.remove(updateResult.identifier)
-                    upToDateIdentifiers.add(newIdentifier)
-                    updatedCount++
-                }
-            }
-            refreshScriptList()
-            _events.send(LauncherEvent.UpdatesCompleted(updatedCount))
-        }
-    }
-
     fun updateScript(identifier: ScriptIdentifier) {
         viewModelScope.launch {
             downloadProgressMap[identifier] = 0
