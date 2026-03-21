@@ -4,7 +4,7 @@
     <string name="script_injection_error">Script loading error: %s</string>
     <string name="launch_game">Launch</string>
     <string name="no_scripts">No scripts installed</string>
-    <string name="conflict_warning">Conflicts with: %s</string>
+    <string name="conflict_warning">Incompatible with: %s</string>
     <string name="add_script">Add script</string>
     <string name="script_url_hint">Script URL (.user.js)</string>
     <string name="add">Add</string>
@@ -24,7 +24,7 @@
     <string name="updates_available">Updates available: %d</string>
     <string name="downloading_progress">Downloading %d%%</string>
     <string name="status_downloaded">Downloaded</string>
-    <string name="status_up_to_date">Latest version</string>
+    <string name="status_up_to_date">latest</string>
     <string name="status_update_available">Update available</string>
     <string name="update">Update</string>
     <string name="download_script">Download</string>

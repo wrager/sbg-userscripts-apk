@@ -1,6 +1,9 @@
 package com.github.wrager.sbguserscripts.launcher
 
 import android.graphics.Paint
+import android.text.Spannable
+import android.text.SpannableStringBuilder
+import android.text.style.ForegroundColorSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -39,20 +42,61 @@ class ScriptListAdapter(
         private val toggle: SwitchCompat = itemView.findViewById(R.id.scriptToggle)
         private val actionButton: ImageButton = itemView.findViewById(R.id.actionButton)
         private val loadingProgress: ProgressBar = itemView.findViewById(R.id.loadingProgress)
-        private val conflictWarning: TextView = itemView.findViewById(R.id.conflictWarning)
         private val defaultStatusTextColor = downloadStatusText.currentTextColor
 
         fun bind(item: ScriptUiItem) {
             nameText.text = item.name
 
-            val details = formatVersion(item.version, item.releaseTag)
-            detailsText.text = details
-            detailsText.visibility = if (details.isNotEmpty()) View.VISIBLE else View.GONE
-
+            bindDetails(item)
             bindDownloadStatus(item)
             bindLoadingProgress(item)
             bindControls(item)
-            bindConflictWarning(item)
+        }
+
+        /**
+         * Собирает строку деталей из версии, статуса актуальности и предупреждения о
+         * несовместимости. Всё отображается в одном TextView, чтобы не менять высоту карточки.
+         */
+        private fun bindDetails(item: ScriptUiItem) {
+            val versionText = formatVersion(item.version, item.releaseTag)
+            val conflictText = if (item.conflictNames.isNotEmpty()) {
+                itemView.context.getString(
+                    R.string.conflict_warning,
+                    item.conflictNames.joinToString(", "),
+                )
+            } else {
+                null
+            }
+            val upToDateText = if (item.isUpToDate) {
+                itemView.context.getString(R.string.status_up_to_date)
+            } else {
+                null
+            }
+
+            val hasContent = versionText.isNotEmpty() || conflictText != null || upToDateText != null
+            if (!hasContent) {
+                detailsText.visibility = View.GONE
+                return
+            }
+
+            val builder = SpannableStringBuilder(versionText)
+            if (upToDateText != null) {
+                if (builder.isNotEmpty()) builder.append(DETAILS_SEPARATOR)
+                builder.append(upToDateText)
+            }
+            if (conflictText != null) {
+                if (builder.isNotEmpty()) builder.append(DETAILS_SEPARATOR)
+                val conflictStart = builder.length
+                builder.append(conflictText)
+                builder.setSpan(
+                    ForegroundColorSpan(CONFLICT_WARNING_COLOR),
+                    conflictStart,
+                    builder.length,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
+                )
+            }
+            detailsText.text = builder
+            detailsText.visibility = View.VISIBLE
         }
 
         /**
@@ -85,10 +129,6 @@ class ScriptListAdapter(
                 item.isCheckingUpdate -> {
                     downloadStatusText.text =
                         itemView.context.getString(R.string.checking_updates)
-                    downloadStatusText.visibility = View.VISIBLE
-                }
-                item.isUpToDate -> {
-                    downloadStatusText.text = itemView.context.getString(R.string.status_up_to_date)
                     downloadStatusText.visibility = View.VISIBLE
                 }
                 item.hasUpdateAvailable -> {
@@ -166,20 +206,12 @@ class ScriptListAdapter(
             }
         }
 
-        private fun bindConflictWarning(item: ScriptUiItem) {
-            if (item.conflictNames.isNotEmpty()) {
-                conflictWarning.text = itemView.context.getString(
-                    R.string.conflict_warning,
-                    item.conflictNames.joinToString(", "),
-                )
-                conflictWarning.visibility = View.VISIBLE
-            } else {
-                conflictWarning.visibility = View.GONE
-            }
-        }
     }
 
     companion object {
+        private const val CONFLICT_WARNING_COLOR = 0xFFFFA000.toInt()
+        private const val DETAILS_SEPARATOR = " · "
+
         private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<ScriptUiItem>() {
             override fun areItemsTheSame(oldItem: ScriptUiItem, newItem: ScriptUiItem): Boolean =
                 oldItem.identifier == newItem.identifier

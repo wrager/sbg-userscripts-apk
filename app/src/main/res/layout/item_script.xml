@@ -69,15 +69,6 @@
 
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/conflictWarning"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textAppearance="?attr/textAppearanceCaption"
-            android:textColor="#FFFFA000"
-            android:visibility="gone" />
-
     </LinearLayout>
 
     <ProgressBar

@@ -4,7 +4,7 @@
     <string name="script_injection_error">Ошибка загрузки скриптов: %s</string>
     <string name="launch_game">Запустить</string>
     <string name="no_scripts">Нет установленных скриптов</string>
-    <string name="conflict_warning">Конфликтует с: %s</string>
+    <string name="conflict_warning">Несовместимо с: %s</string>
     <string name="add_script">Добавить скрипт</string>
     <string name="script_url_hint">URL скрипта (.user.js)</string>
     <string name="add">Добавить</string>
@@ -24,7 +24,7 @@
     <string name="updates_available">Доступно обновлений: %d</string>
     <string name="downloading_progress">Загружается %d%%</string>
     <string name="status_downloaded">Загружен</string>
-    <string name="status_up_to_date">Последняя версия</string>
+    <string name="status_up_to_date">последняя</string>
     <string name="status_update_available">Доступно обновление</string>
     <string name="update">Обновить</string>
     <string name="download_script">Загрузить</string>
