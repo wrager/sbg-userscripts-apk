@@ -27,10 +27,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
                     .addToBackStack(null)
                     .commit()
             } else {
-                // Из standalone SettingsActivity: как раньше
-                val intent = Intent(requireContext(), LauncherActivity::class.java)
-                intent.putExtra(LauncherActivity.EXTRA_FROM_SETTINGS, true)
-                startActivity(intent)
+                startActivity(Intent(requireContext(), LauncherActivity::class.java))
             }
             true
         }
