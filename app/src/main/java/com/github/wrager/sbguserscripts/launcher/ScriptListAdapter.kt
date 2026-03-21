@@ -1,9 +1,6 @@
 package com.github.wrager.sbguserscripts.launcher
 
 import android.graphics.Paint
-import android.text.Spannable
-import android.text.SpannableStringBuilder
-import android.text.style.ForegroundColorSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -37,12 +34,22 @@ class ScriptListAdapter(
 
     inner class ScriptViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val nameText: TextView = itemView.findViewById(R.id.scriptName)
-        private val detailsText: TextView = itemView.findViewById(R.id.scriptDetails)
+        private val detailsRow: View = itemView.findViewById(R.id.detailsRow)
+        private val scriptVersion: TextView = itemView.findViewById(R.id.scriptVersion)
+        private val latestStatus: TextView = itemView.findViewById(R.id.latestStatus)
+        private val conflictContainer: View = itemView.findViewById(R.id.conflictContainer)
+        private val conflictLabel: TextView = itemView.findViewById(R.id.conflictLabel)
+        private val conflictNames: TextView = itemView.findViewById(R.id.conflictNames)
         private val downloadStatusText: TextView = itemView.findViewById(R.id.downloadStatusText)
         private val toggle: SwitchCompat = itemView.findViewById(R.id.scriptToggle)
         private val actionButton: ImageButton = itemView.findViewById(R.id.actionButton)
         private val loadingProgress: ProgressBar = itemView.findViewById(R.id.loadingProgress)
         private val defaultStatusTextColor = downloadStatusText.currentTextColor
+
+        init {
+            // Необходимо для работы горизонтального fading edge при maxLines="1"
+            conflictNames.setHorizontallyScrolling(true)
+        }
 
         fun bind(item: ScriptUiItem) {
             nameText.text = item.name
@@ -54,49 +61,39 @@ class ScriptListAdapter(
         }
 
         /**
-         * Собирает строку деталей из версии, статуса актуальности и предупреждения о
-         * несовместимости. Всё отображается в одном TextView, чтобы не менять высоту карточки.
+         * Заполняет двухстрочную секцию деталей: слева версия + «последняя»,
+         * справа предупреждение о несовместимости. latestStatus остаётся INVISIBLE
+         * (а не GONE), чтобы гарантировать минимальную высоту в две строки.
          */
         private fun bindDetails(item: ScriptUiItem) {
             val versionText = formatVersion(item.version, item.releaseTag)
-            val conflictText = if (item.conflictNames.isNotEmpty()) {
-                itemView.context.getString(
-                    R.string.conflict_warning,
-                    item.conflictNames.joinToString(", "),
-                )
-            } else {
-                null
-            }
-            val upToDateText = if (item.isUpToDate) {
-                itemView.context.getString(R.string.status_up_to_date)
-            } else {
-                null
-            }
+            val hasVersion = versionText.isNotEmpty()
+            val hasConflict = item.conflictNames.isNotEmpty()
 
-            val hasContent = versionText.isNotEmpty() || conflictText != null || upToDateText != null
-            if (!hasContent) {
-                detailsText.visibility = View.GONE
+            if (!hasVersion && !hasConflict) {
+                detailsRow.visibility = View.GONE
                 return
             }
 
-            val builder = SpannableStringBuilder(versionText)
-            if (upToDateText != null) {
-                if (builder.isNotEmpty()) builder.append(DETAILS_SEPARATOR)
-                builder.append(upToDateText)
+            scriptVersion.text = versionText
+            scriptVersion.visibility = if (hasVersion) View.VISIBLE else View.GONE
+
+            latestStatus.text = itemView.context.getString(R.string.status_up_to_date)
+            latestStatus.visibility = when {
+                item.isUpToDate -> View.VISIBLE
+                hasVersion -> View.INVISIBLE
+                else -> View.GONE
             }
-            if (conflictText != null) {
-                if (builder.isNotEmpty()) builder.append(DETAILS_SEPARATOR)
-                val conflictStart = builder.length
-                builder.append(conflictText)
-                builder.setSpan(
-                    ForegroundColorSpan(CONFLICT_WARNING_COLOR),
-                    conflictStart,
-                    builder.length,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE,
-                )
+
+            if (hasConflict) {
+                conflictLabel.text = itemView.context.getString(R.string.conflict_label)
+                conflictNames.text = item.conflictNames.joinToString(", ")
+                conflictContainer.visibility = View.VISIBLE
+            } else {
+                conflictContainer.visibility = View.GONE
             }
-            detailsText.text = builder
-            detailsText.visibility = View.VISIBLE
+
+            detailsRow.visibility = View.VISIBLE
         }
 
         /**
@@ -209,9 +206,6 @@ class ScriptListAdapter(
     }
 
     companion object {
-        private const val CONFLICT_WARNING_COLOR = 0xFFFFA000.toInt()
-        private const val DETAILS_SEPARATOR = " · "
-
         private val DIFF_CALLBACK = object : DiffUtil.ItemCallback<ScriptUiItem>() {
             override fun areItemsTheSame(oldItem: ScriptUiItem, newItem: ScriptUiItem): Boolean =
                 oldItem.identifier == newItem.identifier
