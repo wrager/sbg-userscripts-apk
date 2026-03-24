@@ -350,7 +350,7 @@ class GameActivity : AppCompatActivity() {
         status.visibility = View.VISIBLE
         error.visibility = View.GONE
         retryButton.visibility = View.GONE
-        skipButton.visibility = View.GONE
+        skipButton.visibility = View.INVISIBLE
 
         // Показать кнопку «Пропустить» через 5 секунд,
         // чтобы пользователь не ждал заведомо неработающей загрузки
