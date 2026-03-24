@@ -37,17 +37,47 @@
         android:layout_gravity="center"
         android:gravity="center"
         android:orientation="vertical"
+        android:paddingHorizontal="32dp"
         android:visibility="gone">
 
         <ProgressBar
+            android:id="@+id/provisioningProgress"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
 
         <TextView
+            android:id="@+id/provisioningStatus"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="@string/loading_scripts" />
+            android:gravity="center"
+            android:text="@string/loading_default_scripts" />
+
+        <TextView
+            android:id="@+id/provisioningError"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:gravity="center"
+            android:text="@string/provisioning_failed"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/provisioningRetryButton"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/provisioning_retry"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/provisioningSkipButton"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/provisioning_skip"
+            android:visibility="gone" />
 
     </LinearLayout>
 

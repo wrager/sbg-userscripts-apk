@@ -33,8 +33,12 @@ class DefaultScriptProvisioner(
 
     /**
      * Загружает все enabledByDefault-пресеты, которые ещё не были обработаны.
+     *
+     * @param onScriptLoading вызывается перед загрузкой каждого скрипта
+     *   с его [displayName][PresetScript.displayName].
+     * @return `true`, если все скрипты загружены успешно (или нечего загружать).
      */
-    suspend fun provision() {
+    suspend fun provision(onScriptLoading: (String) -> Unit = {}): Boolean {
         val provisioned = preferences.getStringSet(KEY_PROVISIONED_DEFAULTS, emptySet())
             ?: emptySet()
 
@@ -42,13 +46,16 @@ class DefaultScriptProvisioner(
             preset.enabledByDefault && preset.identifier.value !in provisioned
         }
 
+        var allSucceeded = true
         for (preset in pending) {
+            onScriptLoading(preset.displayName)
             val result = downloader.download(preset.downloadUrl, isPreset = true)
             if (result is ScriptDownloadResult.Success) {
                 scriptStorage.setEnabled(result.script.identifier, true)
                 markProvisioned(provisioned, preset.identifier)
                 Log.i(LOG_TAG, "Автозагрузка: ${preset.displayName}")
             } else if (result is ScriptDownloadResult.Failure) {
+                allSucceeded = false
                 Log.w(
                     LOG_TAG,
                     "Автозагрузка: не удалось загрузить ${preset.displayName}",
@@ -56,6 +63,7 @@ class DefaultScriptProvisioner(
                 )
             }
         }
+        return allSucceeded
     }
 
     private fun markProvisioned(current: Set<String>, identifier: ScriptIdentifier) {

@@ -4,6 +4,11 @@
     <string name="script_injection_error">Ошибка загрузки скриптов: %s</string>
 
     <string name="loading_scripts">Загрузка скриптов…</string>
+    <string name="loading_default_scripts">Загрузка стандартных скриптов…</string>
+    <string name="loading_default_script">Загрузка %s…</string>
+    <string name="provisioning_failed">Не удалось загрузить стандартные скрипты. Можно попробовать снова или продолжить без них.</string>
+    <string name="provisioning_retry">Повторить</string>
+    <string name="provisioning_skip">Продолжить без скриптов</string>
     <string name="no_scripts">Нет установленных скриптов</string>
     <string name="conflict_label">Несовместимо с:</string>
     <string name="add_script">Добавить скрипт</string>

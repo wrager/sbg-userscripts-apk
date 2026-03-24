@@ -4,6 +4,11 @@
     <string name="script_injection_error">Script loading error: %s</string>
 
     <string name="loading_scripts">Loading scripts\u2026</string>
+    <string name="loading_default_scripts">Loading default scripts\u2026</string>
+    <string name="loading_default_script">Loading %s\u2026</string>
+    <string name="provisioning_failed">Failed to load default scripts. You can try again or continue without them.</string>
+    <string name="provisioning_retry">Retry</string>
+    <string name="provisioning_skip">Continue without scripts</string>
     <string name="no_scripts">No scripts installed</string>
     <string name="conflict_label">Incompatible with:</string>
     <string name="add_script">Add script</string>

@@ -15,6 +15,9 @@ import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -48,8 +51,9 @@ class DefaultScriptProvisionerTest {
         coEvery { downloader.download(any(), isPreset = true) } returns
             ScriptDownloadResult.Success(script)
 
-        provisioner.provision()
+        val result = provisioner.provision()
 
+        assertTrue(result)
         coVerify { downloader.download(any(), isPreset = true) }
         verify { scriptStorage.setEnabled(script.identifier, true) }
         verify { editor.putStringSet("provisioned_defaults", setOf("github.com/wrager/sbg-vanilla-plus")) }
@@ -70,8 +74,9 @@ class DefaultScriptProvisionerTest {
         coEvery { downloader.download(any(), isPreset = true) } returns
             ScriptDownloadResult.Failure("url", RuntimeException("network error"))
 
-        provisioner.provision()
+        val result = provisioner.provision()
 
+        assertFalse(result)
         // Не добавлять в provisioned_defaults при ошибке
         verify(exactly = 0) { editor.putStringSet(any(), any()) }
         verify(exactly = 0) { scriptStorage.setEnabled(any(), any()) }
@@ -87,6 +92,19 @@ class DefaultScriptProvisionerTest {
         provisioner.provision()
 
         coVerify(exactly = 0) { downloader.download(any(), any()) }
+    }
+
+    @Test
+    fun `calls onScriptLoading with display name before each download`() = runTest {
+        val script = testScript(identifier = ScriptIdentifier("github.com/wrager/sbg-vanilla-plus"))
+        coEvery { downloader.download(any(), isPreset = true) } returns
+            ScriptDownloadResult.Success(script)
+
+        val reportedNames = mutableListOf<String>()
+        provisioner.provision { name -> reportedNames.add(name) }
+
+        assertEquals(1, reportedNames.size)
+        assertTrue(reportedNames.first().isNotEmpty())
     }
 
     private fun testScript(

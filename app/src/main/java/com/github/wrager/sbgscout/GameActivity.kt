@@ -22,12 +22,16 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.preference.PreferenceManager
+import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.view.View
 import androidx.core.view.doOnLayout
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.FragmentManager
+import androidx.core.view.GravityCompat
 import com.github.wrager.sbgscout.game.SettingsDrawerLayout
 import com.github.wrager.sbgscout.game.SettingsPullTab
 import com.github.wrager.sbgscout.settings.SettingsFragment
@@ -88,16 +92,8 @@ class GameActivity : AppCompatActivity() {
         setupSettingsDrawer()
 
         if (savedInstanceState == null) {
-            // Загрузить enabledByDefault-скрипты ДО открытия страницы,
-            // чтобы они были доступны для инъекции при onPageStarted
-            val overlay = findViewById<LinearLayout>(R.id.provisioningOverlay)
             if (scriptProvisioner.hasPendingScripts()) {
-                overlay.visibility = View.VISIBLE
-                lifecycleScope.launch {
-                    scriptProvisioner.provision()
-                    overlay.visibility = View.GONE
-                    webView.loadUrl(GAME_URL)
-                }
+                startProvisioning()
             } else {
                 webView.loadUrl(GAME_URL)
             }
@@ -312,7 +308,7 @@ class GameActivity : AppCompatActivity() {
     /** Закрыть drawer настроек (вызывается из фрагментов внутри drawer). */
     fun closeSettingsDrawer() {
         findViewById<SettingsDrawerLayout>(R.id.settingsDrawer)
-            .closeDrawer(androidx.core.view.GravityCompat.START)
+            .closeDrawer(GravityCompat.START)
     }
 
     /** Применить настройки, изменённые через drawer (аналог onWindowFocusChanged). */
@@ -323,6 +319,75 @@ class GameActivity : AppCompatActivity() {
             prefs.edit().remove(LauncherActivity.KEY_RELOAD_REQUESTED).apply()
             webView.loadUrl(GAME_URL)
         }
+    }
+
+    /**
+     * Показывает оверлей загрузки, блокирует drawer и скрывает pull-tab,
+     * затем запускает загрузку предустановленных скриптов.
+     *
+     * При успехе — скрывает оверлей и загружает игру.
+     * При ошибке — показывает сообщение с кнопками «Повторить» / «Продолжить без скриптов».
+     */
+    private fun startProvisioning() {
+        val overlay = findViewById<LinearLayout>(R.id.provisioningOverlay)
+        val progress = findViewById<ProgressBar>(R.id.provisioningProgress)
+        val status = findViewById<TextView>(R.id.provisioningStatus)
+        val error = findViewById<TextView>(R.id.provisioningError)
+        val retryButton = findViewById<Button>(R.id.provisioningRetryButton)
+        val skipButton = findViewById<Button>(R.id.provisioningSkipButton)
+        val drawerLayout = findViewById<SettingsDrawerLayout>(R.id.settingsDrawer)
+        val pullTab = findViewById<SettingsPullTab>(R.id.settingsPullTab)
+
+        overlay.visibility = View.VISIBLE
+        pullTab.visibility = View.GONE
+        drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED, GravityCompat.START)
+
+        // Сброс в состояние загрузки (актуально при повторных попытках)
+        progress.visibility = View.VISIBLE
+        status.setText(R.string.loading_default_scripts)
+        status.visibility = View.VISIBLE
+        error.visibility = View.GONE
+        retryButton.visibility = View.GONE
+        skipButton.visibility = View.GONE
+
+        lifecycleScope.launch {
+            val success = scriptProvisioner.provision { scriptName ->
+                status.text = getString(R.string.loading_default_script, scriptName)
+            }
+            if (success) {
+                finishProvisioning()
+            } else {
+                showProvisioningError()
+            }
+        }
+    }
+
+    private fun showProvisioningError() {
+        val progress = findViewById<ProgressBar>(R.id.provisioningProgress)
+        val status = findViewById<TextView>(R.id.provisioningStatus)
+        val error = findViewById<TextView>(R.id.provisioningError)
+        val retryButton = findViewById<Button>(R.id.provisioningRetryButton)
+        val skipButton = findViewById<Button>(R.id.provisioningSkipButton)
+
+        progress.visibility = View.GONE
+        status.visibility = View.GONE
+        error.visibility = View.VISIBLE
+        retryButton.visibility = View.VISIBLE
+        skipButton.visibility = View.VISIBLE
+
+        retryButton.setOnClickListener { startProvisioning() }
+        skipButton.setOnClickListener { finishProvisioning() }
+    }
+
+    private fun finishProvisioning() {
+        val overlay = findViewById<LinearLayout>(R.id.provisioningOverlay)
+        val drawerLayout = findViewById<SettingsDrawerLayout>(R.id.settingsDrawer)
+        val pullTab = findViewById<SettingsPullTab>(R.id.settingsPullTab)
+
+        overlay.visibility = View.GONE
+        pullTab.visibility = View.VISIBLE
+        drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_UNLOCKED, GravityCompat.START)
+        webView.loadUrl(GAME_URL)
     }
 
     private fun setupBackPressHandling() {
