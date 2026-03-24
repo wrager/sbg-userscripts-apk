@@ -443,7 +443,7 @@ class GameActivity : AppCompatActivity() {
         private const val PULL_TAB_VERTICAL_POSITION = 0.25f
         private const val DEFAULT_DRAWER_WIDTH_DP = 300f
         private const val DRAWER_GAP_DIVISOR = 3
-        private const val SKIP_BUTTON_CONNECT_DELAY_MS = 1_000L
+        private const val SKIP_BUTTON_CONNECT_DELAY_MS = 2_000L
         private const val SKIP_BUTTON_DOWNLOAD_DELAY_MS = 5_000L
     }
 }
