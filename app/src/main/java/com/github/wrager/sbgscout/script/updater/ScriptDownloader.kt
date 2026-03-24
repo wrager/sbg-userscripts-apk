@@ -1,14 +1,12 @@
 package com.github.wrager.sbgscout.script.updater
 
-import com.github.wrager.sbgscout.script.model.ScriptIdentifier
-import com.github.wrager.sbgscout.script.model.UserScript
-import com.github.wrager.sbgscout.script.parser.HeaderParser
-import com.github.wrager.sbgscout.script.storage.ScriptStorage
+import com.github.wrager.sbgscout.script.installer.ScriptInstallResult
+import com.github.wrager.sbgscout.script.installer.ScriptInstaller
 import kotlin.coroutines.cancellation.CancellationException
 
 class ScriptDownloader(
     private val httpFetcher: HttpFetcher,
-    private val scriptStorage: ScriptStorage,
+    private val scriptInstaller: ScriptInstaller,
 ) {
     suspend fun download(
         url: String,
@@ -17,41 +15,30 @@ class ScriptDownloader(
     ): ScriptDownloadResult {
         return try {
             val content = httpFetcher.fetch(url, onProgress = onProgress)
-            val header = HeaderParser.parse(content)
-                ?: return ScriptDownloadResult.Failure(
-                    url,
-                    IllegalStateException("No UserScript header found"),
-                )
+            val parseResult = scriptInstaller.parse(content)
 
-            val identifier = buildIdentifier(header.namespace, header.name)
-
-            val script = UserScript(
-                identifier = identifier,
-                header = header,
-                sourceUrl = header.downloadUrl ?: url,
-                updateUrl = header.updateUrl ?: header.downloadUrl ?: url,
-                content = content,
-                enabled = false,
-                isPreset = isPreset,
-            )
-
-            scriptStorage.save(script)
-            ScriptDownloadResult.Success(script)
+            when (parseResult) {
+                is ScriptInstallResult.InvalidHeader ->
+                    ScriptDownloadResult.Failure(
+                        url,
+                        IllegalStateException("No UserScript header found"),
+                    )
+                is ScriptInstallResult.Parsed -> {
+                    val script = parseResult.script.copy(
+                        sourceUrl = parseResult.script.header.downloadUrl ?: url,
+                        updateUrl = parseResult.script.header.updateUrl
+                            ?: parseResult.script.header.downloadUrl
+                            ?: url,
+                        isPreset = isPreset,
+                    )
+                    scriptInstaller.save(script)
+                    ScriptDownloadResult.Success(script)
+                }
+            }
         } catch (exception: CancellationException) {
             throw exception
         } catch (@Suppress("TooGenericExceptionCaught") exception: Exception) {
             ScriptDownloadResult.Failure(url, exception)
-        }
-    }
-
-    private fun buildIdentifier(namespace: String?, name: String): ScriptIdentifier {
-        val prefix = namespace
-            ?.removePrefix("https://")
-            ?.removePrefix("http://")
-        return if (prefix != null) {
-            ScriptIdentifier("$prefix/$name")
-        } else {
-            ScriptIdentifier(name)
         }
     }
 }

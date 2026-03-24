@@ -45,6 +45,7 @@ import com.github.wrager.sbgscout.script.storage.ScriptFileStorageImpl
 import com.github.wrager.sbgscout.script.storage.ScriptStorage
 import com.github.wrager.sbgscout.script.storage.ScriptStorageImpl
 import com.github.wrager.sbgscout.script.updater.DefaultHttpFetcher
+import com.github.wrager.sbgscout.script.installer.ScriptInstaller
 import com.github.wrager.sbgscout.script.updater.ScriptDownloader
 import com.github.wrager.sbgscout.webview.SbgWebViewClient
 import java.io.File
@@ -194,7 +195,8 @@ class GameActivity : AppCompatActivity() {
         val fileStorage = ScriptFileStorageImpl(File(filesDir, "scripts"))
         scriptStorage = ScriptStorageImpl(preferences, fileStorage)
         val httpFetcher = DefaultHttpFetcher()
-        val downloader = ScriptDownloader(httpFetcher, scriptStorage)
+        val scriptInstaller = ScriptInstaller(scriptStorage)
+        val downloader = ScriptDownloader(httpFetcher, scriptInstaller)
         scriptProvisioner = DefaultScriptProvisioner(scriptStorage, downloader, preferences)
         val injectionStateStorage = InjectionStateStorage(preferences)
         val scriptInjector = ScriptInjector(

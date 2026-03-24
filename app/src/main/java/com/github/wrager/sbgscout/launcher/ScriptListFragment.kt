@@ -27,6 +27,7 @@ import com.github.wrager.sbgscout.script.storage.ScriptStorageImpl
 import com.github.wrager.sbgscout.script.provisioner.DefaultScriptProvisioner
 import com.github.wrager.sbgscout.script.updater.DefaultHttpFetcher
 import com.github.wrager.sbgscout.script.updater.GithubReleaseProvider
+import com.github.wrager.sbgscout.script.installer.ScriptInstaller
 import com.github.wrager.sbgscout.script.updater.ScriptDownloader
 import com.github.wrager.sbgscout.script.updater.ScriptUpdateChecker
 import com.google.android.material.appbar.MaterialToolbar
@@ -54,7 +55,8 @@ class ScriptListFragment : Fragment() {
         val scriptStorage = ScriptStorageImpl(preferences, fileStorage)
         val conflictDetector = ConflictDetector(StaticConflictRules())
         val httpFetcher = DefaultHttpFetcher()
-        val downloader = ScriptDownloader(httpFetcher, scriptStorage)
+        val scriptInstaller = ScriptInstaller(scriptStorage)
+        val downloader = ScriptDownloader(httpFetcher, scriptInstaller)
         val updateChecker = ScriptUpdateChecker(httpFetcher, scriptStorage)
         val githubReleaseProvider = GithubReleaseProvider(httpFetcher)
         val injectionStateStorage = InjectionStateStorage(preferences)

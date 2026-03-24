@@ -1,11 +1,17 @@
 package com.github.wrager.sbgscout.script.updater
 
-import com.github.wrager.sbgscout.script.storage.ScriptStorage
+import com.github.wrager.sbgscout.script.installer.ScriptInstallResult
+import com.github.wrager.sbgscout.script.installer.ScriptInstaller
+import com.github.wrager.sbgscout.script.model.ScriptIdentifier
+import com.github.wrager.sbgscout.script.model.UserScript
+import com.github.wrager.sbgscout.script.parser.HeaderParser
 import io.mockk.Runs
 import io.mockk.coEvery
-import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
+import io.mockk.slot
+import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -17,20 +23,21 @@ import java.io.IOException
 class ScriptDownloaderTest {
 
     private lateinit var httpFetcher: HttpFetcher
-    private lateinit var scriptStorage: ScriptStorage
+    private lateinit var scriptInstaller: ScriptInstaller
     private lateinit var downloader: ScriptDownloader
 
     @Before
     fun setUp() {
         httpFetcher = mockk()
-        scriptStorage = mockk()
-        downloader = ScriptDownloader(httpFetcher, scriptStorage)
+        scriptInstaller = mockk()
+        downloader = ScriptDownloader(httpFetcher, scriptInstaller)
     }
 
     @Test
     fun `downloads and saves script with valid header`() = runTest {
         coEvery { httpFetcher.fetch(any(), any(), any()) } returns SCRIPT_WITH_HEADER
-        coEvery { scriptStorage.save(any()) } just Runs
+        every { scriptInstaller.parse(SCRIPT_WITH_HEADER) } returns parsedResult(SCRIPT_WITH_HEADER)
+        every { scriptInstaller.save(any()) } just Runs
 
         val result = downloader.download("https://example.com/script.user.js")
 
@@ -38,7 +45,7 @@ class ScriptDownloaderTest {
         val script = (result as ScriptDownloadResult.Success).script
         assertEquals("Test Script", script.header.name)
         assertEquals("1.0.0", script.header.version)
-        coVerify { scriptStorage.save(any()) }
+        verify { scriptInstaller.save(any()) }
     }
 
     @Test
@@ -51,7 +58,8 @@ class ScriptDownloaderTest {
             onProgress?.invoke(100)
             SCRIPT_WITH_HEADER
         }
-        coEvery { scriptStorage.save(any()) } just Runs
+        every { scriptInstaller.parse(SCRIPT_WITH_HEADER) } returns parsedResult(SCRIPT_WITH_HEADER)
+        every { scriptInstaller.save(any()) } just Runs
 
         downloader.download("https://example.com/script.user.js") { progress ->
             reportedProgress.add(progress)
@@ -62,7 +70,9 @@ class ScriptDownloaderTest {
 
     @Test
     fun `returns failure when header is missing`() = runTest {
-        coEvery { httpFetcher.fetch(any(), any(), any()) } returns "console.log('no header')"
+        val noHeader = "console.log('no header')"
+        coEvery { httpFetcher.fetch(any(), any(), any()) } returns noHeader
+        every { scriptInstaller.parse(noHeader) } returns ScriptInstallResult.InvalidHeader
 
         val result = downloader.download("https://example.com/script.js")
 
@@ -82,7 +92,8 @@ class ScriptDownloaderTest {
     @Test
     fun `sets isPreset flag correctly`() = runTest {
         coEvery { httpFetcher.fetch(any(), any(), any()) } returns SCRIPT_WITH_HEADER
-        coEvery { scriptStorage.save(any()) } just Runs
+        every { scriptInstaller.parse(SCRIPT_WITH_HEADER) } returns parsedResult(SCRIPT_WITH_HEADER)
+        every { scriptInstaller.save(any()) } just Runs
 
         val result = downloader.download("https://example.com/script.user.js", isPreset = true)
 
@@ -93,7 +104,10 @@ class ScriptDownloaderTest {
     @Test
     fun `derives identifier from namespace and name`() = runTest {
         coEvery { httpFetcher.fetch(any()) } returns SCRIPT_WITH_NAMESPACE
-        coEvery { scriptStorage.save(any()) } just Runs
+        every { scriptInstaller.parse(SCRIPT_WITH_NAMESPACE) } returns parsedResult(
+            SCRIPT_WITH_NAMESPACE,
+        )
+        every { scriptInstaller.save(any()) } just Runs
 
         val result = downloader.download("https://example.com/script.user.js")
 
@@ -107,7 +121,10 @@ class ScriptDownloaderTest {
     @Test
     fun `uses download URL from header as sourceUrl`() = runTest {
         coEvery { httpFetcher.fetch(any()) } returns SCRIPT_WITH_DOWNLOAD_URL
-        coEvery { scriptStorage.save(any()) } just Runs
+        every { scriptInstaller.parse(SCRIPT_WITH_DOWNLOAD_URL) } returns parsedResult(
+            SCRIPT_WITH_DOWNLOAD_URL,
+        )
+        every { scriptInstaller.save(any()) } just Runs
 
         val result = downloader.download("https://example.com/script.user.js")
 
@@ -121,7 +138,8 @@ class ScriptDownloaderTest {
     @Test
     fun `uses provided URL as fallback when header has no downloadUrl`() = runTest {
         coEvery { httpFetcher.fetch(any(), any(), any()) } returns SCRIPT_WITH_HEADER
-        coEvery { scriptStorage.save(any()) } just Runs
+        every { scriptInstaller.parse(SCRIPT_WITH_HEADER) } returns parsedResult(SCRIPT_WITH_HEADER)
+        every { scriptInstaller.save(any()) } just Runs
 
         val result = downloader.download("https://fallback.com/script.user.js")
 
@@ -135,12 +153,27 @@ class ScriptDownloaderTest {
     @Test
     fun `new script is disabled by default`() = runTest {
         coEvery { httpFetcher.fetch(any(), any(), any()) } returns SCRIPT_WITH_HEADER
-        coEvery { scriptStorage.save(any()) } just Runs
+        every { scriptInstaller.parse(SCRIPT_WITH_HEADER) } returns parsedResult(SCRIPT_WITH_HEADER)
+        every { scriptInstaller.save(any()) } just Runs
 
         val result = downloader.download("https://example.com/script.user.js")
 
         assertTrue(result is ScriptDownloadResult.Success)
         assertFalse((result as ScriptDownloadResult.Success).script.enabled)
+    }
+
+    @Test
+    fun `saves augmented script with URL fallbacks`() = runTest {
+        coEvery { httpFetcher.fetch(any(), any(), any()) } returns SCRIPT_WITH_HEADER
+        every { scriptInstaller.parse(SCRIPT_WITH_HEADER) } returns parsedResult(SCRIPT_WITH_HEADER)
+        val saved = slot<UserScript>()
+        every { scriptInstaller.save(capture(saved)) } just Runs
+
+        downloader.download("https://fallback.com/script.user.js", isPreset = true)
+
+        assertEquals("https://fallback.com/script.user.js", saved.captured.sourceUrl)
+        assertEquals("https://fallback.com/script.user.js", saved.captured.updateUrl)
+        assertTrue(saved.captured.isPreset)
     }
 
     companion object {
@@ -167,5 +200,30 @@ class ScriptDownloaderTest {
             // @downloadURL https://example.com/download.user.js
             // ==/UserScript==
         """.trimIndent()
+
+        /**
+         * Парсит контент через реальный [HeaderParser] и строит
+         * идентификатор — имитация поведения [ScriptInstaller.parse].
+         */
+        private fun parsedResult(content: String): ScriptInstallResult.Parsed {
+            val header = HeaderParser.parse(content)!!
+            val namespace = header.namespace
+                ?.removePrefix("https://")
+                ?.removePrefix("http://")
+            val identifier = if (namespace != null) {
+                ScriptIdentifier("$namespace/${header.name}")
+            } else {
+                ScriptIdentifier(header.name)
+            }
+            return ScriptInstallResult.Parsed(
+                UserScript(
+                    identifier = identifier,
+                    header = header,
+                    sourceUrl = header.downloadUrl,
+                    updateUrl = header.updateUrl ?: header.downloadUrl,
+                    content = content,
+                ),
+            )
+        }
     }
 }
