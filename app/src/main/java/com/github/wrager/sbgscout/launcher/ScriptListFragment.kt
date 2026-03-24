@@ -164,6 +164,7 @@ class ScriptListFragment : Fragment() {
         val progressBar = view.findViewById<ProgressBar>(R.id.progressBar)
         val emptyText = view.findViewById<TextView>(R.id.emptyText)
         val reloadButton = view.findViewById<MaterialButton>(R.id.reloadButton)
+        val checkUpdatesButton = view.findViewById<MaterialButton>(R.id.checkUpdatesButton)
         val adapter = scriptAdapter
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -177,6 +178,7 @@ class ScriptListFragment : Fragment() {
                         adapter.submitList(state.scripts)
                         emptyText.visibility =
                             if (state.scripts.isEmpty()) View.VISIBLE else View.GONE
+                        checkUpdatesButton.isEnabled = state.scripts.any { it.isDownloaded }
                     }
                 }
             }

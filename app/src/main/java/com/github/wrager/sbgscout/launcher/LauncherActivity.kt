@@ -152,6 +152,7 @@ class LauncherActivity : AppCompatActivity() {
         val progressBar = findViewById<ProgressBar>(R.id.progressBar)
         val emptyText = findViewById<TextView>(R.id.emptyText)
         val reloadButton = findViewById<MaterialButton>(R.id.reloadButton)
+        val checkUpdatesButton = findViewById<MaterialButton>(R.id.checkUpdatesButton)
         val adapter = scriptAdapter
 
         reloadButton.setOnClickListener {
@@ -174,6 +175,7 @@ class LauncherActivity : AppCompatActivity() {
                         adapter.submitList(state.scripts)
                         emptyText.visibility =
                             if (state.scripts.isEmpty()) View.VISIBLE else View.GONE
+                        checkUpdatesButton.isEnabled = state.scripts.any { it.isDownloaded }
                     }
                 }
             }
