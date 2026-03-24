@@ -1,7 +1,9 @@
 package com.github.wrager.sbgscout.script.updater
 
 import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
 import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -22,12 +24,19 @@ class DefaultHttpFetcher : HttpFetcher {
             connection.setRequestProperty("Cache-Control", "no-cache, no-store")
             connection.setRequestProperty("Pragma", "no-cache")
             headers.forEach { (key, value) -> connection.setRequestProperty(key, value) }
+
+            // connection.inputStream — blocking: DNS + connect + redirect + первый ответ.
+            // connectTimeout не покрывает DNS-резолв на Android, а при redirect
+            // (github.com → objects.githubusercontent.com) таймауты удваиваются.
+            // Ограничиваем общее время до получения потока данных.
+            val inputStream = openInputStreamWithDeadline(connection)
+
             val contentLength = connection.contentLengthLong
             val outputStream = ByteArrayOutputStream()
             val buffer = ByteArray(CHUNK_SIZE)
             var totalBytesRead = 0L
             var lastReportedProgress = -1
-            connection.inputStream.use { inputStream ->
+            inputStream.use {
                 var bytesThisRead: Int
                 while (inputStream.read(buffer).also { bytesThisRead = it } != -1) {
                     ensureActive()
@@ -56,9 +65,51 @@ class DefaultHttpFetcher : HttpFetcher {
         }
     }
 
+    /**
+     * Открывает [HttpURLConnection.getInputStream] с жёстким дедлайном [RESPONSE_DEADLINE_MS].
+     *
+     * `connectTimeout` у [HttpURLConnection] не покрывает DNS-резолв на Android,
+     * а при redirect таймауты применяются к каждому hop отдельно, суммируясь.
+     * Запускаем blocking-вызов в отдельном потоке и прерываем через
+     * [HttpURLConnection.disconnect], если дедлайн истёк.
+     */
+    @Suppress("TooGenericExceptionCaught") // inputStream бросает IOException и подклассы
+    private fun openInputStreamWithDeadline(connection: HttpURLConnection): InputStream {
+        var result: InputStream? = null
+        var error: Exception? = null
+
+        val thread = Thread {
+            try {
+                result = connection.inputStream
+            } catch (exception: Exception) {
+                error = exception
+            }
+        }
+        thread.start()
+        thread.join(RESPONSE_DEADLINE_MS)
+
+        if (thread.isAlive) {
+            // Дедлайн истёк — disconnect прервёт blocking I/O в потоке
+            connection.disconnect()
+            thread.join(DISCONNECT_JOIN_TIMEOUT_MS)
+            error = SocketTimeoutException(
+                "Response deadline exceeded (${RESPONSE_DEADLINE_MS}ms): ${connection.url}",
+            )
+        }
+
+        error?.let { throw it }
+        return checkNotNull(result) { "No response stream" }
+    }
+
     companion object {
         private const val CHUNK_SIZE = 8192
         private const val CONNECT_TIMEOUT_MS = 7_000
         private const val READ_TIMEOUT_MS = 10_000
+
+        /** Максимальное время от начала запроса до получения первого байта ответа. */
+        private const val RESPONSE_DEADLINE_MS = 15_000L
+
+        /** Время ожидания завершения потока после disconnect. */
+        private const val DISCONNECT_JOIN_TIMEOUT_MS = 2_000L
     }
 }
