@@ -8,6 +8,7 @@ import com.github.wrager.sbgscout.script.model.ScriptIdentifier
 import com.github.wrager.sbgscout.script.model.UserScript
 import com.github.wrager.sbgscout.script.preset.ConflictDetector
 import com.github.wrager.sbgscout.script.preset.PresetScripts
+import com.github.wrager.sbgscout.script.provisioner.DefaultScriptProvisioner
 import com.github.wrager.sbgscout.script.storage.ScriptStorage
 import com.github.wrager.sbgscout.script.injector.InjectionStateStorage
 import com.github.wrager.sbgscout.script.updater.GithubReleaseProvider
@@ -31,6 +32,7 @@ class LauncherViewModel(
     private val updateChecker: ScriptUpdateChecker,
     private val githubReleaseProvider: GithubReleaseProvider,
     private val injectionStateStorage: InjectionStateStorage,
+    private val scriptProvisioner: DefaultScriptProvisioner,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LauncherUiState())
@@ -75,6 +77,7 @@ class LauncherViewModel(
                         if (preset.enabledByDefault) {
                             scriptStorage.setEnabled(result.script.identifier, true)
                         }
+                        scriptProvisioner.markProvisioned(preset.identifier)
                         setOperationState(result.script.identifier, ScriptOperationState.UpToDate)
                         Log.i(LOG_TAG, "Загружен ${preset.displayName}: ${result.script.header.version}")
                         _events.send(
@@ -452,6 +455,7 @@ class LauncherViewModel(
         private val updateChecker: ScriptUpdateChecker,
         private val githubReleaseProvider: GithubReleaseProvider,
         private val injectionStateStorage: InjectionStateStorage,
+        private val scriptProvisioner: DefaultScriptProvisioner,
     ) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             @Suppress("UNCHECKED_CAST")
@@ -462,6 +466,7 @@ class LauncherViewModel(
                 updateChecker,
                 githubReleaseProvider,
                 injectionStateStorage,
+                scriptProvisioner,
             ) as T
         }
     }

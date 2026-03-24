@@ -27,6 +27,7 @@ import com.github.wrager.sbgscout.script.preset.StaticConflictRules
 import com.github.wrager.sbgscout.script.storage.ScriptFileStorageImpl
 import com.github.wrager.sbgscout.script.storage.ScriptStorageImpl
 import com.github.wrager.sbgscout.script.injector.InjectionStateStorage
+import com.github.wrager.sbgscout.script.provisioner.DefaultScriptProvisioner
 import com.github.wrager.sbgscout.script.updater.DefaultHttpFetcher
 import com.github.wrager.sbgscout.script.updater.GithubReleaseProvider
 import com.github.wrager.sbgscout.script.updater.ScriptDownloader
@@ -53,6 +54,7 @@ class LauncherActivity : AppCompatActivity() {
         val updateChecker = ScriptUpdateChecker(httpFetcher, scriptStorage)
         val githubReleaseProvider = GithubReleaseProvider(httpFetcher)
         val injectionStateStorage = InjectionStateStorage(preferences)
+        val scriptProvisioner = DefaultScriptProvisioner(scriptStorage, downloader, preferences)
         LauncherViewModel.Factory(
             scriptStorage,
             conflictDetector,
@@ -60,6 +62,7 @@ class LauncherActivity : AppCompatActivity() {
             updateChecker,
             githubReleaseProvider,
             injectionStateStorage,
+            scriptProvisioner,
         )
     }
 

@@ -13,6 +13,7 @@ import com.github.wrager.sbgscout.script.updater.GithubRelease
 import com.github.wrager.sbgscout.script.updater.GithubReleaseProvider
 import com.github.wrager.sbgscout.script.updater.ScriptDownloadResult
 import com.github.wrager.sbgscout.script.updater.ScriptDownloader
+import com.github.wrager.sbgscout.script.provisioner.DefaultScriptProvisioner
 import com.github.wrager.sbgscout.script.updater.ScriptUpdateChecker
 import com.github.wrager.sbgscout.script.updater.ScriptUpdateResult
 import io.mockk.Runs
@@ -48,6 +49,7 @@ class LauncherViewModelTest {
     private lateinit var updateChecker: ScriptUpdateChecker
     private lateinit var githubReleaseProvider: GithubReleaseProvider
     private lateinit var injectionStateStorage: InjectionStateStorage
+    private lateinit var scriptProvisioner: DefaultScriptProvisioner
 
     @Before
     fun setUp() {
@@ -57,9 +59,11 @@ class LauncherViewModelTest {
         updateChecker = mockk()
         githubReleaseProvider = mockk()
         injectionStateStorage = mockk()
+        scriptProvisioner = mockk()
 
         coEvery { updateChecker.checkAllForUpdates() } returns emptyList()
         every { injectionStateStorage.getSnapshot() } returns null
+        every { scriptProvisioner.markProvisioned(any()) } just Runs
     }
 
     @After
@@ -609,6 +613,31 @@ class LauncherViewModelTest {
     }
 
     @Test
+    fun `downloadScript marks preset as provisioned on success`() = runTest {
+        every { scriptStorage.getAll() } returns emptyList()
+        every { scriptStorage.setEnabled(any(), any()) } just Runs
+        val svpScript = testScript(
+            identifier = PresetScripts.SVP.identifier,
+            name = "SVP",
+            isPreset = true,
+        )
+        coEvery {
+            downloader.download(PresetScripts.SVP.downloadUrl, isPreset = true, any())
+        } answers {
+            every { scriptStorage.getAll() } returns listOf(svpScript)
+            ScriptDownloadResult.Success(svpScript)
+        }
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.downloadScript(PresetScripts.SVP.identifier)
+        advanceUntilIdle()
+
+        verify { scriptProvisioner.markProvisioned(PresetScripts.SVP.identifier) }
+    }
+
+    @Test
     fun `downloadScript does not enable script when preset has no enabledByDefault`() = runTest {
         every { scriptStorage.getAll() } returns emptyList()
         val cuiScript = testScript(
@@ -658,6 +687,7 @@ class LauncherViewModelTest {
         updateChecker,
         githubReleaseProvider,
         injectionStateStorage,
+        scriptProvisioner,
     )
 
     private fun testScript(

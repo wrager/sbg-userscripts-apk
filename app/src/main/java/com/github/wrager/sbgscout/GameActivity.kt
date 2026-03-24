@@ -407,11 +407,6 @@ class GameActivity : AppCompatActivity() {
     }
 
     private fun finishProvisioning() {
-        // Пометить все оставшиеся пресеты как обработанные, чтобы
-        // provisioning не повторялся при следующем запуске. При успешной
-        // загрузке они уже помечены в provision(), вызов идемпотентен.
-        scriptProvisioner.skipAll()
-
         val overlay = findViewById<LinearLayout>(R.id.provisioningOverlay)
         val drawerLayout = findViewById<SettingsDrawerLayout>(R.id.settingsDrawer)
         val pullTab = findViewById<SettingsPullTab>(R.id.settingsPullTab)
