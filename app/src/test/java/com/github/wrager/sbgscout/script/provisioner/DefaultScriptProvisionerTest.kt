@@ -101,7 +101,7 @@ class DefaultScriptProvisionerTest {
             ScriptDownloadResult.Success(script)
 
         val reportedNames = mutableListOf<String>()
-        provisioner.provision { name -> reportedNames.add(name) }
+        provisioner.provision(onScriptLoading = { name -> reportedNames.add(name) })
 
         assertEquals(1, reportedNames.size)
         assertTrue(reportedNames.first().isNotEmpty())

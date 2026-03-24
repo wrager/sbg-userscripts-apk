@@ -343,6 +343,7 @@ class GameActivity : AppCompatActivity() {
         drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED, GravityCompat.START)
 
         // Сброс в состояние загрузки (актуально при повторных попытках)
+        progress.isIndeterminate = true
         progress.visibility = View.VISIBLE
         status.setText(R.string.loading_default_scripts)
         status.visibility = View.VISIBLE
@@ -351,9 +352,19 @@ class GameActivity : AppCompatActivity() {
         skipButton.visibility = View.GONE
 
         lifecycleScope.launch {
-            val success = scriptProvisioner.provision { scriptName ->
-                status.text = getString(R.string.loading_default_script, scriptName)
-            }
+            val success = scriptProvisioner.provision(
+                onScriptLoading = { scriptName ->
+                    // Сброс в indeterminate на время установки соединения
+                    progress.isIndeterminate = true
+                    status.text = getString(R.string.loading_default_script, scriptName)
+                },
+                onDownloadProgress = { percent ->
+                    if (progress.isIndeterminate) {
+                        progress.isIndeterminate = false
+                    }
+                    progress.setProgressCompat(percent, true)
+                },
+            )
             if (success) {
                 finishProvisioning()
             } else {

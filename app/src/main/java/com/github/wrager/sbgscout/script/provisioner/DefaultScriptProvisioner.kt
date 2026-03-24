@@ -36,9 +36,13 @@ class DefaultScriptProvisioner(
      *
      * @param onScriptLoading вызывается перед загрузкой каждого скрипта
      *   с его [displayName][PresetScript.displayName].
+     * @param onDownloadProgress вызывается при получении данных с прогрессом 0–100 %.
      * @return `true`, если все скрипты загружены успешно (или нечего загружать).
      */
-    suspend fun provision(onScriptLoading: (String) -> Unit = {}): Boolean {
+    suspend fun provision(
+        onScriptLoading: (String) -> Unit = {},
+        onDownloadProgress: ((Int) -> Unit)? = null,
+    ): Boolean {
         val provisioned = preferences.getStringSet(KEY_PROVISIONED_DEFAULTS, emptySet())
             ?: emptySet()
 
@@ -49,7 +53,11 @@ class DefaultScriptProvisioner(
         var allSucceeded = true
         for (preset in pending) {
             onScriptLoading(preset.displayName)
-            val result = downloader.download(preset.downloadUrl, isPreset = true)
+            val result = downloader.download(
+                preset.downloadUrl,
+                isPreset = true,
+                onProgress = onDownloadProgress,
+            )
             if (result is ScriptDownloadResult.Success) {
                 scriptStorage.setEnabled(result.script.identifier, true)
                 markProvisioned(provisioned, preset.identifier)
