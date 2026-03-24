@@ -40,10 +40,12 @@
         android:paddingHorizontal="32dp"
         android:visibility="gone">
 
-        <ProgressBar
+        <com.google.android.material.progressindicator.LinearProgressIndicator
             android:id="@+id/provisioningProgress"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            style="@style/Widget.MaterialComponents.LinearProgressIndicator"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:indeterminate="true" />
 
         <TextView
             android:id="@+id/provisioningStatus"

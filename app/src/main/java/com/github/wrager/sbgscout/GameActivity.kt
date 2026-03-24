@@ -25,7 +25,7 @@ import androidx.preference.PreferenceManager
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.ProgressBar
+import com.google.android.material.progressindicator.LinearProgressIndicator
 import android.widget.TextView
 import android.view.View
 import androidx.core.view.doOnLayout
@@ -330,7 +330,7 @@ class GameActivity : AppCompatActivity() {
      */
     private fun startProvisioning() {
         val overlay = findViewById<LinearLayout>(R.id.provisioningOverlay)
-        val progress = findViewById<ProgressBar>(R.id.provisioningProgress)
+        val progress = findViewById<LinearProgressIndicator>(R.id.provisioningProgress)
         val status = findViewById<TextView>(R.id.provisioningStatus)
         val error = findViewById<TextView>(R.id.provisioningError)
         val retryButton = findViewById<Button>(R.id.provisioningRetryButton)
@@ -363,7 +363,7 @@ class GameActivity : AppCompatActivity() {
     }
 
     private fun showProvisioningError() {
-        val progress = findViewById<ProgressBar>(R.id.provisioningProgress)
+        val progress = findViewById<LinearProgressIndicator>(R.id.provisioningProgress)
         val status = findViewById<TextView>(R.id.provisioningStatus)
         val error = findViewById<TextView>(R.id.provisioningError)
         val retryButton = findViewById<Button>(R.id.provisioningRetryButton)
