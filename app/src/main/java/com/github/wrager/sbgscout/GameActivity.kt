@@ -387,10 +387,7 @@ class GameActivity : AppCompatActivity() {
         skipButton.visibility = View.VISIBLE
 
         retryButton.setOnClickListener { startProvisioning() }
-        skipButton.setOnClickListener {
-            scriptProvisioner.skipPending()
-            finishProvisioning()
-        }
+        skipButton.setOnClickListener { finishProvisioning() }
     }
 
     private fun finishProvisioning() {

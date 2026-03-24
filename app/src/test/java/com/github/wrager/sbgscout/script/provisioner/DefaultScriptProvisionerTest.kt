@@ -111,13 +111,6 @@ class DefaultScriptProvisionerTest {
     }
 
     @Test
-    fun `skipPending marks all pending presets as provisioned`() {
-        provisioner.skipPending()
-
-        verify { editor.putStringSet("provisioned_defaults", match { it.isNotEmpty() }) }
-    }
-
-    @Test
     fun `calls onScriptLoading with display name before each download`() = runTest {
         val script = testScript(identifier = ScriptIdentifier("github.com/wrager/sbg-vanilla-plus"))
         coEvery { downloader.download(any(), isPreset = true) } returns

@@ -85,16 +85,6 @@ class DefaultScriptProvisioner(
         }
     }
 
-    /**
-     * Помечает все pending-пресеты как обработанные.
-     * Вызывается, когда пользователь отказался от загрузки («Продолжить без скриптов»).
-     */
-    fun skipPending() {
-        for (preset in pendingPresets()) {
-            markProvisioned(preset.identifier)
-        }
-    }
-
     private fun markProvisioned(identifier: ScriptIdentifier) {
         val current = preferences.getStringSet(KEY_PROVISIONED_DEFAULTS, emptySet())
             ?: emptySet()
