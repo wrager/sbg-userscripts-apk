@@ -1,6 +1,8 @@
 package com.github.wrager.sbgscout.launcher
 
 import com.github.wrager.sbgscout.script.injector.InjectionStateStorage
+import com.github.wrager.sbgscout.script.installer.ScriptInstallResult
+import com.github.wrager.sbgscout.script.installer.ScriptInstaller
 import com.github.wrager.sbgscout.script.model.ScriptHeader
 import com.github.wrager.sbgscout.script.model.ScriptIdentifier
 import com.github.wrager.sbgscout.script.model.UserScript
@@ -39,6 +41,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+@Suppress("LargeClass")
 @OptIn(ExperimentalCoroutinesApi::class)
 class LauncherViewModelTest {
 
@@ -46,6 +49,7 @@ class LauncherViewModelTest {
     private lateinit var scriptStorage: ScriptStorage
     private val conflictDetector = ConflictDetector(StaticConflictRules())
     private lateinit var downloader: ScriptDownloader
+    private lateinit var scriptInstaller: ScriptInstaller
     private lateinit var updateChecker: ScriptUpdateChecker
     private lateinit var githubReleaseProvider: GithubReleaseProvider
     private lateinit var injectionStateStorage: InjectionStateStorage
@@ -56,6 +60,7 @@ class LauncherViewModelTest {
         Dispatchers.setMain(testDispatcher)
         scriptStorage = mockk()
         downloader = mockk()
+        scriptInstaller = mockk()
         updateChecker = mockk()
         githubReleaseProvider = mockk()
         injectionStateStorage = mockk()
@@ -680,10 +685,116 @@ class LauncherViewModelTest {
         verify { scriptStorage.setEnabled(script.identifier, true) }
     }
 
+    @Test
+    fun `addScriptFromContent installs script from raw content`() = runTest {
+        every { scriptStorage.getAll() } returns emptyList()
+        val parsedScript = testScript(name = "File Script")
+        every { scriptInstaller.parse("script content") } returns
+            ScriptInstallResult.Parsed(parsedScript)
+        every { scriptInstaller.save(any()) } answers {
+            every { scriptStorage.getAll() } returns listOf(parsedScript)
+        }
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val events = mutableListOf<LauncherEvent>()
+        val job = launch { viewModel.events.collect { events.add(it) } }
+
+        viewModel.addScriptFromContent("script content")
+        advanceUntilIdle()
+
+        verify { scriptInstaller.save(parsedScript) }
+        assertTrue(events.any { it is LauncherEvent.ScriptAdded })
+
+        job.cancel()
+    }
+
+    @Test
+    fun `addScriptFromContent sends failure event for invalid header`() = runTest {
+        every { scriptStorage.getAll() } returns emptyList()
+        every { scriptInstaller.parse("bad content") } returns ScriptInstallResult.InvalidHeader
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val events = mutableListOf<LauncherEvent>()
+        val job = launch { viewModel.events.collect { events.add(it) } }
+
+        viewModel.addScriptFromContent("bad content")
+        advanceUntilIdle()
+
+        assertTrue(events.any { it is LauncherEvent.ScriptAddFailed })
+
+        job.cancel()
+    }
+
+    @Test
+    fun `addScriptFromContent detects preset and saves as preset`() = runTest {
+        every { scriptStorage.getAll() } returns emptyList()
+        every { scriptStorage.setEnabled(any(), any()) } just Runs
+        val parsedScript = testScript(
+            identifier = ScriptIdentifier("github.com/wrager/sbg-vanilla-plus/SBG Vanilla+"),
+            name = "SBG Vanilla+",
+            sourceUrl = null,
+        )
+        every { scriptInstaller.parse(any()) } returns ScriptInstallResult.Parsed(parsedScript)
+        every { scriptInstaller.save(any()) } answers {
+            val saved = arg<UserScript>(0)
+            every { scriptStorage.getAll() } returns listOf(saved)
+        }
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.addScriptFromContent("script content")
+        advanceUntilIdle()
+
+        verify {
+            scriptInstaller.save(
+                match {
+                    it.isPreset &&
+                        it.sourceUrl == PresetScripts.SVP.downloadUrl &&
+                        it.updateUrl == PresetScripts.SVP.updateUrl
+                },
+            )
+        }
+        verify { scriptStorage.setEnabled(any(), true) }
+        verify { scriptProvisioner.markProvisioned(PresetScripts.SVP.identifier) }
+    }
+
+    @Test
+    fun `addScriptFromContent detects preset by downloadUrl in header`() = runTest {
+        every { scriptStorage.getAll() } returns emptyList()
+        every { scriptStorage.setEnabled(any(), any()) } just Runs
+        val parsedScript = testScript(
+            identifier = ScriptIdentifier("custom/namespace/SVP"),
+            name = "SVP",
+            sourceUrl = PresetScripts.SVP.downloadUrl,
+        ).let { script ->
+            script.copy(header = script.header.copy(downloadUrl = PresetScripts.SVP.downloadUrl))
+        }
+        every { scriptInstaller.parse(any()) } returns ScriptInstallResult.Parsed(parsedScript)
+        every { scriptInstaller.save(any()) } answers {
+            val saved = arg<UserScript>(0)
+            every { scriptStorage.getAll() } returns listOf(saved)
+        }
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.addScriptFromContent("script content")
+        advanceUntilIdle()
+
+        verify { scriptInstaller.save(match { it.isPreset }) }
+        verify { scriptProvisioner.markProvisioned(PresetScripts.SVP.identifier) }
+    }
+
     private fun createViewModel() = LauncherViewModel(
         scriptStorage,
         conflictDetector,
         downloader,
+        scriptInstaller,
         updateChecker,
         githubReleaseProvider,
         injectionStateStorage,
@@ -695,7 +806,7 @@ class LauncherViewModelTest {
         name: String = "Test Script",
         version: String = "1.0.0",
         enabled: Boolean = false,
-        sourceUrl: String = "https://example.com/script.user.js",
+        sourceUrl: String? = "https://example.com/script.user.js",
         releaseTag: String? = null,
         isPreset: Boolean = false,
     ) = UserScript(

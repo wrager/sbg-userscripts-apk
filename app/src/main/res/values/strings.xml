@@ -12,6 +12,9 @@
     <string name="no_scripts">No scripts installed</string>
     <string name="conflict_label">Incompatible with:</string>
     <string name="add_script">Add script</string>
+    <string name="add_script_by_url">By URL</string>
+    <string name="add_script_from_file">From file</string>
+    <string name="file_read_error">Failed to read file: %s</string>
     <string name="script_url_hint">Script URL (.user.js)</string>
     <string name="add">Add</string>
     <string name="delete">Delete</string>

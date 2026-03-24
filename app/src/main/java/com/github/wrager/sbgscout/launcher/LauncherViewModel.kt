@@ -4,9 +4,12 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.github.wrager.sbgscout.script.installer.ScriptInstallResult
+import com.github.wrager.sbgscout.script.installer.ScriptInstaller
 import com.github.wrager.sbgscout.script.model.ScriptIdentifier
 import com.github.wrager.sbgscout.script.model.UserScript
 import com.github.wrager.sbgscout.script.preset.ConflictDetector
+import com.github.wrager.sbgscout.script.preset.PresetScript
 import com.github.wrager.sbgscout.script.preset.PresetScripts
 import com.github.wrager.sbgscout.script.provisioner.DefaultScriptProvisioner
 import com.github.wrager.sbgscout.script.storage.ScriptStorage
@@ -29,6 +32,7 @@ class LauncherViewModel(
     private val scriptStorage: ScriptStorage,
     private val conflictDetector: ConflictDetector,
     private val downloader: ScriptDownloader,
+    private val scriptInstaller: ScriptInstaller,
     private val updateChecker: ScriptUpdateChecker,
     private val githubReleaseProvider: GithubReleaseProvider,
     private val injectionStateStorage: InjectionStateStorage,
@@ -133,6 +137,53 @@ class LauncherViewModel(
                     )
                 }
             }
+        }
+    }
+
+    fun addScriptFromContent(content: String) {
+        viewModelScope.launch {
+            val parseResult = scriptInstaller.parse(content)
+            when (parseResult) {
+                is ScriptInstallResult.InvalidHeader -> {
+                    _events.send(LauncherEvent.ScriptAddFailed("No UserScript header found"))
+                }
+                is ScriptInstallResult.Parsed -> {
+                    val matchingPreset = findMatchingPreset(parseResult.script)
+                    val script = if (matchingPreset != null) {
+                        parseResult.script.copy(
+                            sourceUrl = matchingPreset.downloadUrl,
+                            updateUrl = matchingPreset.updateUrl,
+                            isPreset = true,
+                        )
+                    } else {
+                        parseResult.script
+                    }
+                    scriptInstaller.save(script)
+                    if (matchingPreset != null) {
+                        if (matchingPreset.enabledByDefault) {
+                            scriptStorage.setEnabled(script.identifier, true)
+                        }
+                        scriptProvisioner.markProvisioned(matchingPreset.identifier)
+                    }
+                    refreshScriptList()
+                    _events.send(
+                        LauncherEvent.ScriptAdded(script.header.name, script.header.version),
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Определяет, соответствует ли скрипт одному из пресетов.
+     *
+     * Матчит по @downloadURL в заголовке (приоритет) или по префиксу
+     * идентификатора (namespace пресета содержится в namespace/name скрипта).
+     */
+    private fun findMatchingPreset(script: UserScript): PresetScript? {
+        return PresetScripts.ALL.find { preset ->
+            script.header.downloadUrl == preset.downloadUrl ||
+                script.identifier.value.startsWith(preset.identifier.value + "/")
         }
     }
 
@@ -452,6 +503,7 @@ class LauncherViewModel(
         private val scriptStorage: ScriptStorage,
         private val conflictDetector: ConflictDetector,
         private val downloader: ScriptDownloader,
+        private val scriptInstaller: ScriptInstaller,
         private val updateChecker: ScriptUpdateChecker,
         private val githubReleaseProvider: GithubReleaseProvider,
         private val injectionStateStorage: InjectionStateStorage,
@@ -463,6 +515,7 @@ class LauncherViewModel(
                 scriptStorage,
                 conflictDetector,
                 downloader,
+                scriptInstaller,
                 updateChecker,
                 githubReleaseProvider,
                 injectionStateStorage,

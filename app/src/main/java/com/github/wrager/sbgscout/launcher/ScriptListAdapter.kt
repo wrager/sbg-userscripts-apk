@@ -21,10 +21,10 @@ class ScriptListAdapter(
     private val onUpdateRequested: (ScriptIdentifier) -> Unit,
     private val onOverflowClick: (View, ScriptUiItem) -> Unit,
     private val onAddScriptClick: () -> Unit,
+    private val onAddScriptFromFileClick: () -> Unit,
 ) : ListAdapter<ScriptUiItem, RecyclerView.ViewHolder>(DIFF_CALLBACK) {
 
-    // Кнопка «Добавить скрипт» временно отключена
-    override fun getItemCount(): Int = super.getItemCount()
+    override fun getItemCount(): Int = super.getItemCount() + 1
 
     override fun getItemViewType(position: Int): Int =
         if (position < super.getItemCount()) VIEW_TYPE_SCRIPT else VIEW_TYPE_ADD_BUTTON
@@ -48,7 +48,10 @@ class ScriptListAdapter(
 
     inner class AddScriptViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         init {
-            itemView.setOnClickListener { onAddScriptClick() }
+            itemView.findViewById<View>(R.id.addScriptButton)
+                .setOnClickListener { onAddScriptClick() }
+            itemView.findViewById<View>(R.id.addScriptFromFileButton)
+                .setOnClickListener { onAddScriptFromFileClick() }
         }
     }
 

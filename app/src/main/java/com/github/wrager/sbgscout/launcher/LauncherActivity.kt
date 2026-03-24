@@ -1,6 +1,7 @@
 package com.github.wrager.sbgscout.launcher
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.LinearLayout
@@ -8,6 +9,7 @@ import android.widget.PopupMenu
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -45,6 +47,10 @@ class LauncherActivity : AppCompatActivity() {
 
     private lateinit var scriptAdapter: ScriptListAdapter
 
+    private val filePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> uri?.let { readFileAndInstall(it) } }
+
     private val viewModel: LauncherViewModel by viewModels {
         val preferences = getSharedPreferences("scripts", MODE_PRIVATE)
         val fileStorage = ScriptFileStorageImpl(File(filesDir, "scripts"))
@@ -61,6 +67,7 @@ class LauncherActivity : AppCompatActivity() {
             scriptStorage,
             conflictDetector,
             downloader,
+            scriptInstaller,
             updateChecker,
             githubReleaseProvider,
             injectionStateStorage,
@@ -135,6 +142,7 @@ class LauncherActivity : AppCompatActivity() {
                 showScriptOverflowMenu(anchor, item)
             },
             onAddScriptClick = { showAddScriptDialog() },
+            onAddScriptFromFileClick = { filePickerLauncher.launch(arrayOf("*/*")) },
         )
         scriptList.adapter = scriptAdapter
     }
@@ -219,6 +227,20 @@ class LauncherActivity : AppCompatActivity() {
                 }
         }
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
+    private fun readFileAndInstall(uri: Uri) {
+        try {
+            val content = contentResolver.openInputStream(uri)?.bufferedReader()?.readText()
+                ?: return
+            viewModel.addScriptFromContent(content)
+        } catch (@Suppress("TooGenericExceptionCaught") exception: Exception) {
+            Toast.makeText(
+                this,
+                getString(R.string.file_read_error, exception.message),
+                Toast.LENGTH_SHORT,
+            ).show()
+        }
     }
 
     private fun showAddScriptDialog() {

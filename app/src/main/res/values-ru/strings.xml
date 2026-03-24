@@ -12,6 +12,9 @@
     <string name="no_scripts">Нет установленных скриптов</string>
     <string name="conflict_label">Несовместимо с:</string>
     <string name="add_script">Добавить скрипт</string>
+    <string name="add_script_by_url">По ссылке</string>
+    <string name="add_script_from_file">Из файла</string>
+    <string name="file_read_error">Не удалось прочитать файл: %s</string>
     <string name="script_url_hint">URL скрипта (.user.js)</string>
     <string name="add">Добавить</string>
     <string name="delete">Удалить</string>
