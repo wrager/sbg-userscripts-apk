@@ -110,7 +110,7 @@ class SettingsPullTab @JvmOverloads constructor(
     }
 
     companion object {
-        private const val TAB_COLOR = 0x80_6B_6B_6B.toInt()
+        private const val TAB_COLOR = 0x40_6B_6B_6B.toInt()
         private const val CHEVRON_COLOR = 0x80_FF_FF_FF.toInt()
         private const val CHEVRON_STROKE_WIDTH_DP = 1.5f
         private const val CHEVRON_ARM_LENGTH_DP = 5f
