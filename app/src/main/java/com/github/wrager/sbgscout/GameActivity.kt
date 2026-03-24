@@ -352,10 +352,10 @@ class GameActivity : AppCompatActivity() {
         retryButton.visibility = View.GONE
         skipButton.visibility = View.INVISIBLE
 
-        // Показать кнопку «Пропустить» через 5 секунд,
-        // чтобы пользователь не ждал заведомо неработающей загрузки
-        val skipTimerJob = lifecycleScope.launch {
-            delay(SKIP_BUTTON_DELAY_MS)
+        // Кнопка «Пропустить»: через 1с если соединение не установлено,
+        // через 5с после начала загрузки данных
+        var skipTimerJob = lifecycleScope.launch {
+            delay(SKIP_BUTTON_CONNECT_DELAY_MS)
             skipButton.visibility = View.VISIBLE
             skipButton.setOnClickListener { finishProvisioning() }
         }
@@ -363,13 +363,19 @@ class GameActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val success = scriptProvisioner.provision(
                 onScriptLoading = { scriptName ->
-                    // Сброс в indeterminate на время установки соединения
                     progress.isIndeterminate = true
                     status.text = getString(R.string.loading_default_script, scriptName)
                 },
                 onDownloadProgress = { percent ->
                     if (progress.isIndeterminate) {
                         progress.isIndeterminate = false
+                        // Соединение установлено — перезапустить таймер на 5 секунд
+                        skipTimerJob.cancel()
+                        skipTimerJob = lifecycleScope.launch {
+                            delay(SKIP_BUTTON_DOWNLOAD_DELAY_MS)
+                            skipButton.visibility = View.VISIBLE
+                            skipButton.setOnClickListener { finishProvisioning() }
+                        }
                     }
                     progress.setProgressCompat(percent, true)
                 },
@@ -437,6 +443,7 @@ class GameActivity : AppCompatActivity() {
         private const val PULL_TAB_VERTICAL_POSITION = 0.25f
         private const val DEFAULT_DRAWER_WIDTH_DP = 300f
         private const val DRAWER_GAP_DIVISOR = 3
-        private const val SKIP_BUTTON_DELAY_MS = 5_000L
+        private const val SKIP_BUTTON_CONNECT_DELAY_MS = 1_000L
+        private const val SKIP_BUTTON_DOWNLOAD_DELAY_MS = 5_000L
     }
 }
