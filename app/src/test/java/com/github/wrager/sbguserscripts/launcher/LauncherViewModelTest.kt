@@ -495,6 +495,67 @@ class LauncherViewModelTest {
     }
 
     @Test
+    fun `checkUpdates transitions from CheckingUpdate to UpToDate`() = runTest {
+        val script = testScript()
+        every { scriptStorage.getAll() } returns listOf(script)
+        coEvery { updateChecker.checkAllForUpdates() } returns listOf(
+            ScriptUpdateResult.UpToDate(script.identifier),
+        )
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // До проверки — нет состояния операции
+        assertNull(viewModel.uiState.value.scripts.first { it.identifier == script.identifier }.operationState)
+
+        viewModel.checkUpdates()
+        advanceUntilIdle()
+
+        // После проверки — UpToDate
+        val item = viewModel.uiState.value.scripts.first { it.identifier == script.identifier }
+        assertEquals(ScriptOperationState.UpToDate, item.operationState)
+    }
+
+    @Test
+    fun `checkUpdates transitions from CheckingUpdate to UpdateAvailable`() = runTest {
+        val script = testScript(version = "1.0.0")
+        every { scriptStorage.getAll() } returns listOf(script)
+        coEvery { updateChecker.checkAllForUpdates() } returns listOf(
+            ScriptUpdateResult.UpdateAvailable(
+                script.identifier,
+                com.github.wrager.sbguserscripts.script.model.ScriptVersion("1.0.0"),
+                com.github.wrager.sbguserscripts.script.model.ScriptVersion("2.0.0"),
+            ),
+        )
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.checkUpdates()
+        advanceUntilIdle()
+
+        val item = viewModel.uiState.value.scripts.first { it.identifier == script.identifier }
+        assertEquals(ScriptOperationState.UpdateAvailable, item.operationState)
+    }
+
+    @Test
+    fun `checkUpdates clears CheckingUpdate on failure`() = runTest {
+        val script = testScript()
+        every { scriptStorage.getAll() } returns listOf(script)
+        coEvery { updateChecker.checkAllForUpdates() } throws RuntimeException("network error")
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.checkUpdates()
+        advanceUntilIdle()
+
+        // После ошибки — состояние должно быть очищено
+        val item = viewModel.uiState.value.scripts.first { it.identifier == script.identifier }
+        assertNull(item.operationState)
+    }
+
+    @Test
     fun `deleteScript clears operation state`() = runTest {
         val script = testScript()
         val scriptList = mutableListOf(script)
