@@ -48,6 +48,7 @@ import com.github.wrager.sbgscout.script.updater.DefaultHttpFetcher
 import com.github.wrager.sbgscout.script.updater.ScriptDownloader
 import com.github.wrager.sbgscout.webview.SbgWebViewClient
 import java.io.File
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class GameActivity : AppCompatActivity() {
@@ -351,6 +352,14 @@ class GameActivity : AppCompatActivity() {
         retryButton.visibility = View.GONE
         skipButton.visibility = View.GONE
 
+        // Показать кнопку «Пропустить» через 5 секунд,
+        // чтобы пользователь не ждал заведомо неработающей загрузки
+        val skipTimerJob = lifecycleScope.launch {
+            delay(SKIP_BUTTON_DELAY_MS)
+            skipButton.visibility = View.VISIBLE
+            skipButton.setOnClickListener { finishProvisioning() }
+        }
+
         lifecycleScope.launch {
             val success = scriptProvisioner.provision(
                 onScriptLoading = { scriptName ->
@@ -365,6 +374,7 @@ class GameActivity : AppCompatActivity() {
                     progress.setProgressCompat(percent, true)
                 },
             )
+            skipTimerJob.cancel()
             if (success) {
                 finishProvisioning()
             } else {
@@ -427,5 +437,6 @@ class GameActivity : AppCompatActivity() {
         private const val PULL_TAB_VERTICAL_POSITION = 0.25f
         private const val DEFAULT_DRAWER_WIDTH_DP = 300f
         private const val DRAWER_GAP_DIVISOR = 3
+        private const val SKIP_BUTTON_DELAY_MS = 5_000L
     }
 }
