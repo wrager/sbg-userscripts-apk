@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace = "com.github.wrager.sbguserscripts"
+    namespace = "com.github.wrager.sbgscout"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.github.wrager.sbguserscripts"
+        applicationId = "com.github.wrager.sbgscout"
         minSdk = 24
         targetSdk = 35
         val versionMajor = 0
