@@ -65,15 +65,23 @@ class DefaultScriptProvisioner(
 
     /**
      * Возвращает пресеты, которых ещё нет ни в [provisioned_defaults][KEY_PROVISIONED_DEFAULTS],
-     * ни в [ScriptStorage] (установлены вручную или через менеджер скриптов).
+     * ни в [ScriptStorage].
+     *
+     * Сравнение с хранилищем идёт по [sourceUrl][UserScript.sourceUrl],
+     * а не по [identifier][PresetScript.identifier]: идентификатор пресета
+     * (namespace без @name) не совпадает с идентификатором сохранённого скрипта
+     * (namespace + "/" + @name), который формирует [ScriptDownloader].
      */
     private fun pendingPresets(): List<PresetScript> {
         val provisioned = preferences.getStringSet(KEY_PROVISIONED_DEFAULTS, emptySet())
             ?: emptySet()
+        val installedSourceUrls = scriptStorage.getAll()
+            .mapNotNull { it.sourceUrl }
+            .toSet()
         return PresetScripts.ALL.filter { preset ->
             preset.enabledByDefault &&
                 preset.identifier.value !in provisioned &&
-                !scriptStorage.contains(preset.identifier)
+                preset.downloadUrl !in installedSourceUrls
         }
     }
 

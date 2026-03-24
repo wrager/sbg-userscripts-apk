@@ -41,7 +41,7 @@ class DefaultScriptProvisionerTest {
         every { editor.putStringSet(any(), any()) } returns editor
         every { editor.apply() } just Runs
         every { scriptStorage.setEnabled(any(), any()) } just Runs
-        every { scriptStorage.contains(any()) } returns false
+        every { scriptStorage.getAll() } returns emptyList()
 
         provisioner = DefaultScriptProvisioner(scriptStorage, downloader, preferences)
     }
@@ -97,9 +97,11 @@ class DefaultScriptProvisionerTest {
 
     @Test
     fun `skips scripts already present in storage`() = runTest {
-        every {
-            scriptStorage.contains(ScriptIdentifier("github.com/wrager/sbg-vanilla-plus"))
-        } returns true
+        val installedScript = testScript(
+            identifier = ScriptIdentifier("github.com/wrager/sbg-vanilla-plus/SBG Vanilla+"),
+            sourceUrl = "https://github.com/wrager/sbg-vanilla-plus/releases/latest/download/sbg-vanilla-plus.user.js",
+        )
+        every { scriptStorage.getAll() } returns listOf(installedScript)
 
         val result = provisioner.provision()
 
@@ -123,10 +125,11 @@ class DefaultScriptProvisionerTest {
 
     private fun testScript(
         identifier: ScriptIdentifier = ScriptIdentifier("test/script"),
+        sourceUrl: String = "https://example.com/script.user.js",
     ) = UserScript(
         identifier = identifier,
         header = ScriptHeader(name = "Test Script", version = "1.0.0"),
-        sourceUrl = "https://example.com/script.user.js",
+        sourceUrl = sourceUrl,
         updateUrl = "https://example.com/script.meta.js",
         content = "console.log('test')",
         enabled = false,
