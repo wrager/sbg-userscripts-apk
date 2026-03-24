@@ -1,4 +1,4 @@
-# Архитектура SBG Userscripts APK
+# Архитектура SBG Scout
 
 ## Обзор
 
@@ -105,7 +105,7 @@ Android-приложение с WebView, загружающее игру SBG (`s
 ## Структура проекта
 
 ```
-app/src/main/java/com/github/wrager/sbguserscripts/
+app/src/main/java/com/github/wrager/sbgscout/
 ├── GameActivity.kt          WebView, immersive mode, geolocation, drawer настроек
 ├── bridge/
 │   ├── ClipboardBridge.kt   Полифил navigator.clipboard

@@ -1,4 +1,4 @@
-# Принципы разработки SBG Userscripts APK
+# Принципы разработки SBG Scout
 
 ## Common principles
 

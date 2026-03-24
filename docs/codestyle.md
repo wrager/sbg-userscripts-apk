@@ -1,8 +1,8 @@
-# Соглашения о стиле кодирования SBG Userscripts APK
+# Соглашения о стиле кодирования SBG Scout
 
 | Что | Формат | Пример |
 |---|---|---|
-| Пакеты | lowercase | `com.github.wrager.sbguserscripts.script.model` |
+| Пакеты | lowercase | `com.github.wrager.sbgscout.script.model` |
 | Классы/интерфейсы | PascalCase | `ScriptStorage`, `UserScript` |
 | Функции/переменные | camelCase | `getEnabledScripts` |
 | Константы | UPPER_SNAKE_CASE | `MAX_CACHE_SIZE` |

@@ -1,4 +1,4 @@
-# SBG Userscripts
+# SBG Scout
 
 Android-приложение для игры [SBG](https://sbg-game.ru/) с встроенным менеджером юзерскриптов.
 
@@ -21,7 +21,7 @@ Android-приложение для игры [SBG](https://sbg-game.ru/) с вс
 
 ## Установка
 
-Скачать последний APK из [Releases](https://github.com/wrager/sbg-userscripts-apk/releases).
+Скачать последний APK из [Releases](https://github.com/wrager/sbg-scout/releases).
 
 ## Сборка
 
