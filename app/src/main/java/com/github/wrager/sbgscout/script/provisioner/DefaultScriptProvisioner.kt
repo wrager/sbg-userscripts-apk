@@ -23,13 +23,7 @@ class DefaultScriptProvisioner(
     private val preferences: SharedPreferences,
 ) {
     /** Есть ли пресеты, которые нужно загрузить. */
-    fun hasPendingScripts(): Boolean {
-        val provisioned = preferences.getStringSet(KEY_PROVISIONED_DEFAULTS, emptySet())
-            ?: emptySet()
-        return PresetScripts.ALL.any { preset ->
-            preset.enabledByDefault && preset.identifier.value !in provisioned
-        }
-    }
+    fun hasPendingScripts(): Boolean = pendingPresets().isNotEmpty()
 
     /**
      * Загружает все enabledByDefault-пресеты, которые ещё не были обработаны.
@@ -43,12 +37,7 @@ class DefaultScriptProvisioner(
         onScriptLoading: (String) -> Unit = {},
         onDownloadProgress: ((Int) -> Unit)? = null,
     ): Boolean {
-        val provisioned = preferences.getStringSet(KEY_PROVISIONED_DEFAULTS, emptySet())
-            ?: emptySet()
-
-        val pending = PresetScripts.ALL.filter { preset ->
-            preset.enabledByDefault && preset.identifier.value !in provisioned
-        }
+        val pending = pendingPresets()
 
         var allSucceeded = true
         for (preset in pending) {
@@ -60,7 +49,7 @@ class DefaultScriptProvisioner(
             )
             if (result is ScriptDownloadResult.Success) {
                 scriptStorage.setEnabled(result.script.identifier, true)
-                markProvisioned(provisioned, preset.identifier)
+                markProvisioned(preset.identifier)
                 Log.i(LOG_TAG, "Автозагрузка: ${preset.displayName}")
             } else if (result is ScriptDownloadResult.Failure) {
                 allSucceeded = false
@@ -74,7 +63,23 @@ class DefaultScriptProvisioner(
         return allSucceeded
     }
 
-    private fun markProvisioned(current: Set<String>, identifier: ScriptIdentifier) {
+    /**
+     * Возвращает пресеты, которых ещё нет ни в [provisioned_defaults][KEY_PROVISIONED_DEFAULTS],
+     * ни в [ScriptStorage] (установлены вручную или через менеджер скриптов).
+     */
+    private fun pendingPresets(): List<PresetScript> {
+        val provisioned = preferences.getStringSet(KEY_PROVISIONED_DEFAULTS, emptySet())
+            ?: emptySet()
+        return PresetScripts.ALL.filter { preset ->
+            preset.enabledByDefault &&
+                preset.identifier.value !in provisioned &&
+                !scriptStorage.contains(preset.identifier)
+        }
+    }
+
+    private fun markProvisioned(identifier: ScriptIdentifier) {
+        val current = preferences.getStringSet(KEY_PROVISIONED_DEFAULTS, emptySet())
+            ?: emptySet()
         preferences.edit()
             .putStringSet(KEY_PROVISIONED_DEFAULTS, current + identifier.value)
             .apply()

@@ -41,6 +41,7 @@ class DefaultScriptProvisionerTest {
         every { editor.putStringSet(any(), any()) } returns editor
         every { editor.apply() } just Runs
         every { scriptStorage.setEnabled(any(), any()) } just Runs
+        every { scriptStorage.contains(any()) } returns false
 
         provisioner = DefaultScriptProvisioner(scriptStorage, downloader, preferences)
     }
@@ -92,6 +93,19 @@ class DefaultScriptProvisionerTest {
         provisioner.provision()
 
         coVerify(exactly = 0) { downloader.download(any(), any()) }
+    }
+
+    @Test
+    fun `skips scripts already present in storage`() = runTest {
+        every {
+            scriptStorage.contains(ScriptIdentifier("github.com/wrager/sbg-vanilla-plus"))
+        } returns true
+
+        val result = provisioner.provision()
+
+        assertTrue(result)
+        coVerify(exactly = 0) { downloader.download(any(), any()) }
+        verify(exactly = 0) { scriptStorage.setEnabled(any(), any()) }
     }
 
     @Test

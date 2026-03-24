@@ -27,6 +27,10 @@ class ScriptStorageImpl(
         }
     }
 
+    override fun contains(identifier: ScriptIdentifier): Boolean {
+        return sharedPreferences.contains(identifier.value)
+    }
+
     override fun save(script: UserScript) {
         val json = ScriptSerializer.toJson(script)
         sharedPreferences.edit()

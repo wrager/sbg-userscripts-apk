@@ -5,6 +5,7 @@ import com.github.wrager.sbgscout.script.model.UserScript
 
 interface ScriptStorage {
     fun getAll(): List<UserScript>
+    fun contains(identifier: ScriptIdentifier): Boolean
     fun save(script: UserScript)
     fun delete(identifier: ScriptIdentifier)
     fun getEnabled(): List<UserScript>

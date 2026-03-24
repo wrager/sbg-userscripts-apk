@@ -162,6 +162,20 @@ class ScriptStorageImplTest {
     }
 
     @Test
+    fun `contains returns true when script exists`() {
+        every { sharedPreferences.contains(testIdentifier.value) } returns true
+
+        assertTrue(storage.contains(testIdentifier))
+    }
+
+    @Test
+    fun `contains returns false when script does not exist`() {
+        every { sharedPreferences.contains("nonexistent") } returns false
+
+        assertFalse(storage.contains(ScriptIdentifier("nonexistent")))
+    }
+
+    @Test
     fun `save overwrites existing script`() {
         val updatedScript = testScript.copy(
             header = ScriptHeader(name = "Updated Script", version = "2.0.0"),
