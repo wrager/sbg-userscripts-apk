@@ -54,6 +54,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
     }
 
     companion object {
-        private const val ISSUES_URL = "https://github.com/wrager/sbg-userscripts-apk/issues"
+        private const val ISSUES_URL = "https://github.com/wrager/sbg-scout/issues"
     }
 }
