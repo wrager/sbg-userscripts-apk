@@ -123,6 +123,26 @@ class DefaultScriptProvisionerTest {
         assertTrue(reportedNames.first().isNotEmpty())
     }
 
+    @Test
+    fun `skipAll marks all pending presets as provisioned`() {
+        provisioner.skipAll()
+
+        verify { editor.putStringSet("provisioned_defaults", setOf("github.com/wrager/sbg-vanilla-plus")) }
+    }
+
+    @Test
+    fun `hasPendingScripts returns false after skipAll`() {
+        provisioner.skipAll()
+
+        // После skipAll markProvisioned добавляет идентификатор в set,
+        // но мок возвращает старое значение — пересоздаём provisioner
+        // с обновлённым preferences
+        every { preferences.getStringSet("provisioned_defaults", emptySet()) } returns
+            setOf("github.com/wrager/sbg-vanilla-plus")
+
+        assertFalse(provisioner.hasPendingScripts())
+    }
+
     private fun testScript(
         identifier: ScriptIdentifier = ScriptIdentifier("test/script"),
         sourceUrl: String = "https://example.com/script.user.js",

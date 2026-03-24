@@ -26,6 +26,18 @@ class DefaultScriptProvisioner(
     fun hasPendingScripts(): Boolean = pendingPresets().isNotEmpty()
 
     /**
+     * Помечает все pending-пресеты как обработанные, не загружая их.
+     *
+     * Вызывается при нажатии «Продолжить без скриптов»: пользователь явно
+     * отказался от автозагрузки, и повторять её при следующем запуске не нужно.
+     */
+    fun skipAll() {
+        for (preset in pendingPresets()) {
+            markProvisioned(preset.identifier)
+        }
+    }
+
+    /**
      * Загружает все enabledByDefault-пресеты, которые ещё не были обработаны.
      *
      * @param onScriptLoading вызывается перед загрузкой каждого скрипта
