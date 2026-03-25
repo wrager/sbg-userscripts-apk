@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.ProgressBar
@@ -33,6 +34,7 @@ import com.github.wrager.sbgscout.script.provisioner.DefaultScriptProvisioner
 import com.github.wrager.sbgscout.script.updater.DefaultHttpFetcher
 import com.github.wrager.sbgscout.script.updater.GithubReleaseProvider
 import com.github.wrager.sbgscout.script.installer.ScriptInstaller
+import com.github.wrager.sbgscout.script.updater.PendingScriptUpdateStorage
 import com.github.wrager.sbgscout.script.updater.ScriptDownloader
 import com.github.wrager.sbgscout.script.updater.ScriptUpdateChecker
 import com.github.wrager.sbgscout.settings.SettingsActivity
@@ -85,6 +87,47 @@ class LauncherActivity : AppCompatActivity() {
         setupUpdateControls()
         setupScriptList()
         observeViewModel()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        showPendingScriptUpdateNotes()
+    }
+
+    /**
+     * Показывает release notes скриптов, обновлённых из GameActivity (drawer).
+     * Вызывается при каждом onResume: если есть сохранённые заметки — показывает и сбрасывает.
+     */
+    private fun showPendingScriptUpdateNotes() {
+        val pendingStorage = PendingScriptUpdateStorage(
+            getSharedPreferences("scripts", MODE_PRIVATE),
+        )
+        val summary = pendingStorage.consumePending() ?: return
+
+        val density = resources.displayMetrics.density
+        val maxHeightPx = (RELEASE_NOTES_MAX_HEIGHT_DP * density).toInt()
+        val paddingPx = (RELEASE_NOTES_PADDING_DP * density).toInt()
+        val textView = TextView(this).apply {
+            text = summary
+            setPadding(paddingPx, paddingPx, paddingPx, paddingPx)
+            setTextIsSelectable(true)
+        }
+        val scrollView = android.widget.ScrollView(this).apply { addView(textView) }
+        val container = object : FrameLayout(this@LauncherActivity) {
+            override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+                val constrainedHeight = View.MeasureSpec.makeMeasureSpec(
+                    maxHeightPx, View.MeasureSpec.AT_MOST,
+                )
+                super.onMeasure(widthMeasureSpec, constrainedHeight)
+            }
+        }
+        container.addView(scrollView)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.scripts_updated)
+            .setView(container)
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
     }
 
     private fun setupEdgeToEdge() {
@@ -341,5 +384,7 @@ class LauncherActivity : AppCompatActivity() {
 
     companion object {
         internal const val KEY_RELOAD_REQUESTED = "reload_requested"
+        private const val RELEASE_NOTES_MAX_HEIGHT_DP = 200
+        private const val RELEASE_NOTES_PADDING_DP = 24
     }
 }

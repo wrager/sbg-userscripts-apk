@@ -53,6 +53,7 @@ import com.github.wrager.sbgscout.script.storage.ScriptStorage
 import com.github.wrager.sbgscout.script.storage.ScriptStorageImpl
 import com.github.wrager.sbgscout.script.updater.DefaultHttpFetcher
 import com.github.wrager.sbgscout.script.updater.GithubReleaseProvider
+import com.github.wrager.sbgscout.script.updater.PendingScriptUpdateStorage
 import com.github.wrager.sbgscout.script.updater.ScriptReleaseNotesProvider
 import com.github.wrager.sbgscout.script.updater.ScriptUpdateChecker
 import com.github.wrager.sbgscout.script.updater.ScriptUpdateResult
@@ -756,6 +757,11 @@ class GameActivity : AppCompatActivity() {
             .setTitle(R.string.script_updates_available)
             .setView(container)
             .setPositiveButton(R.string.update) { _, _ ->
+                // Сохраняем описание обновлений для показа при следующем открытии лаунчера
+                val pendingStorage = PendingScriptUpdateStorage(
+                    getSharedPreferences("scripts", MODE_PRIVATE),
+                )
+                pendingStorage.save(details)
                 openScriptManagerWithAutoUpdate()
             }
             .setNegativeButton(android.R.string.cancel, null)

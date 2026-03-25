@@ -33,6 +33,7 @@
     <string name="no_updates">Обновлений нет</string>
     <string name="updates_available">Доступно обновлений: %d</string>
     <string name="script_updates_available">Доступны обновления скриптов</string>
+    <string name="scripts_updated">Скрипты обновлены</string>
 
     <string name="status_downloaded">Загружен</string>
     <string name="status_up_to_date">последняя</string>
