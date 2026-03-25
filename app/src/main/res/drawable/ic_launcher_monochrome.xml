@@ -5,6 +5,15 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
+    <!-- "SBG" -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M49.41,56 L43.66,56 L43.66,60 L49.41,60 L49.41,64 L43.66,64 M51.13,56 L51.13,64 L56.88,64 L56.88,60 L51.13,60 M51.13,56 L56.88,56 L56.88,60 M64.35,56 L58.6,56 L58.6,64 L64.35,64 L64.35,60 L61.48,60"
+        android:strokeColor="#000000"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.5" />
+
     <!-- "SCOUT" -->
     <path
         android:fillColor="#00000000"
