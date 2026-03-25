@@ -101,6 +101,8 @@ Android-приложение с WebView, загружающее игру SBG (`s
 
 - `ScriptDownloader` — загрузка скрипта по URL, парсинг заголовка, сохранение
 - `ScriptUpdateChecker` — сравнение локальной и удалённой версий через `.meta.js`
+- `ScriptReleaseNotesProvider` — загрузка и агрегация release notes из GitHub Releases API (от текущей до новой версии)
+- `PendingScriptUpdateStorage` — хранение описания обновлений в SharedPreferences для отложенного показа на лаунчере
 - `GithubReleaseProvider` — загрузка списка релизов через GitHub Releases API для выбора версии
 - `HttpFetcher` — интерфейс HTTP GET (с поддержкой headers и бинарной загрузки в файл), реализация через `HttpURLConnection`
 
@@ -191,7 +193,9 @@ app/src/main/java/com/github/wrager/sbgscout/
 │       ├── ScriptDownloadResult.kt   Success | Failure
 │       ├── ScriptUpdateResult.kt     UpdateAvailable | UpToDate | CheckFailed
 │       ├── GithubRelease.kt          Модели GitHub-релиза и ассета
-│       └── GithubReleaseProvider.kt  Загрузка релизов через GitHub API
+│       ├── GithubReleaseProvider.kt  Загрузка релизов через GitHub API
+│       ├── ScriptReleaseNotesProvider.kt  Агрегация release notes скриптов
+│       └── PendingScriptUpdateStorage.kt  Хранение pending-обновлений для лаунчера
 ├── settings/
 │   ├── SettingsActivity.kt  Экран настроек
 │   └── SettingsFragment.kt  PreferenceFragmentCompat, проверка обновлений приложения, баг-репорт
