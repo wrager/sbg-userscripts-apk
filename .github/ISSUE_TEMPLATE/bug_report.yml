@@ -33,29 +33,42 @@ body:
     id: apk-version
     attributes:
       label: Версия APK
-      placeholder: "1.0"
+      placeholder: "0.11.0"
     validations:
       required: true
 
   - type: input
     id: android-version
     attributes:
-      label: Версия Android
-      placeholder: "14"
+      label: Версия Android / WebView
+      placeholder: "14 (API 34) (WebView 120.0.6099.144)"
     validations:
       required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Устройство
+      placeholder: "Google Pixel 7"
 
   - type: textarea
     id: scripts
     attributes:
       label: Включённые скрипты
-      description: Какие юзерскрипты были активны?
+      description: Какие юзерскрипты были активны? (автоматически заполняется из приложения)
       placeholder: |
-        - SVP v0.3.0
+        - SVP v0.6.0
         - EUI v1.2.0
 
   - type: textarea
-    id: logs
+    id: diagnostics
     attributes:
-      label: Логи / скриншоты
-      description: Логи из logcat или скриншоты, если есть
+      label: Диагностика
+      description: Вставьте диагностику из буфера обмена (скопирована автоматически при нажатии «Сообщить об ошибке»)
+      render: text
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Скриншоты
+      description: Скриншоты, если есть
