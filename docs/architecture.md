@@ -25,23 +25,40 @@ Android-приложение с WebView, загружающее игру SBG (`s
 - Меню карточки скрипта (⋮): «Выбрать версию» (GitHub) / «Переустановить» (остальные), «Удалить» (не-пресеты)
 - Первый запуск: автоматическая загрузка всех пресетных скриптов
 
-### Настройки (SettingsActivity)
+### Настройки (SettingsActivity / SettingsFragment)
 
-- `SettingsFragment` (PreferenceFragmentCompat) — автообновление, версия, баг-репорт
-- Настройки хранятся в `SharedPreferences` (по умолчанию `_preferences`)
+- `SettingsFragment` (PreferenceFragmentCompat) — используется в двух контекстах:
+  - В `SettingsActivity` — из LauncherActivity
+  - В drawer `GameActivity` — встроен в выдвижную панель
+- Категории настроек:
+  - **Экран** — полноэкранный режим, не гасить экран
+  - **Скрипты** — менеджер скриптов, перезагрузка игры
+  - **Обновления** — авто-проверка, проверка обновлений приложения, проверка обновлений скриптов
+  - **О приложении** — версия, баг-репорт
 
 ### Локализация
 
 - Английский — язык по умолчанию (`values/strings.xml`)
 - Русский — `values-ru/strings.xml`
-- Язык определяется по системным настройкам устройства
+- Язык определяется из настроек игры (`localStorage['settings'].lang`), fallback на системные настройки
 
 ## WebView
 
-- `SbgWebViewClient` — перехват загрузки страниц, инжекция скриптов, обработка `window.close()`
-- JS-бриджи: `ClipboardBridge` (полифил `navigator.clipboard`), `ShareBridge` (открытие URL)
+- `SbgWebViewClient` — перехват загрузки страниц, инжекция скриптов, чтение настроек игры, обработка `window.close()`
+- JS-бриджи:
+  - `ClipboardBridge` — полифил `navigator.clipboard` (`Android.*`)
+  - `ShareBridge` — открытие URL (`__sbg_share.*`)
+  - `GameSettingsBridge` — уведомления об изменении настроек игры (`__sbg_settings.*`)
 - Инжекция только на `sbg-game.ru/app*`
 - Geolocation permissions — запрос и выдача runtime-разрешений
+
+### Синхронизация темы и языка с игрой
+
+- `GameSettingsReader` парсит JSON из `localStorage['settings']` (поля `theme`, `lang`)
+- `GameSettingsBridge` перехватывает `localStorage.setItem('settings', ...)` через JS-обёртку и уведомляет Android
+- `SbgWebViewClient` инжектирует обёртку в `onPageStarted`, читает начальные настройки в `onPageFinished`
+- `GameActivity` применяет тему через `AppCompatDelegate.setDefaultNightMode()` и язык через `AppCompatDelegate.setApplicationLocales()`
+- Последние применённые значения сохраняются в SharedPreferences для предотвращения recreation loop
 
 ### Настройки в GameActivity
 
@@ -49,6 +66,7 @@ Android-приложение с WebView, загружающее игру SBG (`s
 - `SettingsPullTab` — кастомный View (сегмент эллипса с шевроном) на левом краю, 25% от верха
 - `SettingsFragment` встроен в drawer панель, выезжает слева при свайпе от таба
 - Свайп из других точек левого края не открывает drawer (не мешает WebView)
+- Кнопка «Назад»: приоритетно закрывает ScriptListFragment → drawer → WebView back → exit
 
 ## Менеджер скриптов
 
@@ -84,40 +102,51 @@ Android-приложение с WebView, загружающее игру SBG (`s
 - `ScriptDownloader` — загрузка скрипта по URL, парсинг заголовка, сохранение
 - `ScriptUpdateChecker` — сравнение локальной и удалённой версий через `.meta.js`
 - `GithubReleaseProvider` — загрузка списка релизов через GitHub Releases API для выбора версии
-- `HttpFetcher` — интерфейс HTTP GET (с поддержкой headers), реализация через `HttpURLConnection`
+- `HttpFetcher` — интерфейс HTTP GET (с поддержкой headers и бинарной загрузки в файл), реализация через `HttpURLConnection`
 
 ### Инжекция
 
-1. Глобальные переменные (`__sbg_local`, `__sbg_package`, `__sbg_package_version`)
-2. Clipboard-полифил
-3. Скрипты (каждый в IIFE, обёрнут в try-catch)
-4. Группировка по `@run-at`: document-start выполняется в `onPageStarted`, document-end/idle — по событию DOMContentLoaded
-5. Ошибки инжекции собираются через `window.__sbg_injection_errors`
+1. Перехват `localStorage.setItem` (обёртка для `GameSettingsBridge`)
+2. Глобальные переменные (`__sbg_local`, `__sbg_package`, `__sbg_package_version`)
+3. Clipboard-полифил
+4. Скрипты (каждый в IIFE, обёрнут в try-catch)
+5. Группировка по `@run-at`: document-start выполняется в `onPageStarted`, document-end/idle — по событию DOMContentLoaded
+6. Ошибки инжекции собираются через `window.__sbg_injection_errors`
+
+## Обновление приложения
+
+- `AppUpdateChecker` — проверка новых версий через GitHub Releases API (`wrager/sbg-scout`), сравнение с `BuildConfig.VERSION_NAME`
+- `AppUpdateResult` — sealed class: `UpdateAvailable`, `UpToDate`, `CheckFailed`
+- `AppUpdateInstaller` — скачивание APK в `cacheDir/updates/` через `HttpFetcher.fetchToFile`, установка через `FileProvider` + `ACTION_VIEW`
+- Авто-проверка при запуске: если включена настройка и прошло > 24ч с последней проверки
+- Ручная проверка через кнопку в настройках (категория «Обновления»)
 
 ## Флоу запуска
 
 1. `LauncherActivity` — список скриптов с тогглами и предупреждениями о конфликтах
 2. Первый запуск: автоматическая загрузка предустановленных скриптов (SVP включён по умолчанию)
 3. Пользователь настраивает скрипты → нажимает «Запустить» → `GameActivity`
-4. `SbgWebViewClient` загружает `sbg-game.ru/app`, инжектирует включённые скрипты
-5. JS-бриджи доступны скриптам через `Android.*` и `__sbg_share.*`
+4. `SbgWebViewClient` загружает `sbg-game.ru/app`, инжектирует обёртку localStorage + включённые скрипты
+5. JS-бриджи доступны скриптам через `Android.*`, `__sbg_share.*`, `__sbg_settings.*`
 
 ## Структура проекта
 
 ```
 app/src/main/java/com/github/wrager/sbgscout/
-├── GameActivity.kt          WebView, immersive mode, geolocation, drawer настроек
+├── GameActivity.kt          WebView, immersive mode, geolocation, drawer настроек, тема/язык из игры
 ├── bridge/
 │   ├── ClipboardBridge.kt   Полифил navigator.clipboard
+│   ├── GameSettingsBridge.kt  Уведомления об изменении настроек игры (localStorage)
 │   └── ShareBridge.kt       Открытие URL
+├── game/
+│   ├── GameSettingsReader.kt   Парсинг JSON настроек игры (theme, lang)
+│   ├── SettingsDrawerLayout.kt  DrawerLayout с ограничением зоны свайпа
+│   └── SettingsPullTab.kt       Визуальный pull-tab (сегмент эллипса)
 ├── launcher/
 │   ├── LauncherActivity.kt    Стартовый экран, LAUNCHER
 │   ├── LauncherViewModel.kt   Состояние, бизнес-логика
 │   ├── LauncherUiState.kt     Модели UI-состояния и событий
 │   └── ScriptListAdapter.kt   RecyclerView-адаптер
-├── game/
-│   ├── SettingsDrawerLayout.kt  DrawerLayout с ограничением зоны свайпа
-│   └── SettingsPullTab.kt       Визуальный pull-tab (сегмент эллипса)
 ├── script/
 │   ├── injector/
 │   │   ├── ScriptInjector.kt      Генерация JS для инжекции
@@ -143,7 +172,7 @@ app/src/main/java/com/github/wrager/sbgscout/
 │   │   ├── ScriptFileStorageImpl.kt  Реализация
 │   │   └── ScriptSerializer.kt    JSON-сериализация
 │   └── updater/
-│       ├── HttpFetcher.kt            Интерфейс HTTP
+│       ├── HttpFetcher.kt            Интерфейс HTTP (fetch + fetchToFile)
 │       ├── DefaultHttpFetcher.kt     Реализация
 │       ├── ScriptDownloader.kt       Загрузка скриптов
 │       ├── ScriptUpdateChecker.kt    Проверка обновлений
@@ -153,7 +182,11 @@ app/src/main/java/com/github/wrager/sbgscout/
 │       └── GithubReleaseProvider.kt  Загрузка релизов через GitHub API
 ├── settings/
 │   ├── SettingsActivity.kt  Экран настроек
-│   └── SettingsFragment.kt  PreferenceFragmentCompat
+│   └── SettingsFragment.kt  PreferenceFragmentCompat, проверка обновлений приложения
+├── updater/
+│   ├── AppUpdateChecker.kt     Проверка обновлений через GitHub Releases
+│   ├── AppUpdateInstaller.kt   Скачивание и установка APK
+│   └── AppUpdateResult.kt      UpdateAvailable | UpToDate | CheckFailed
 └── webview/
-    └── SbgWebViewClient.kt  Загрузка страниц, инжекция, close()
+    └── SbgWebViewClient.kt  Загрузка страниц, инжекция, чтение настроек, close()
 ```
