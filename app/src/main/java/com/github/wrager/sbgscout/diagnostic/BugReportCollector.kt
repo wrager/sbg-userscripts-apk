@@ -130,7 +130,7 @@ class BugReportCollector(
                     else -> {
                         for (byte in char.toString().toByteArray(Charsets.UTF_8)) {
                             append('%')
-                            append(String.format("%02X", byte))
+                            append(String.format(java.util.Locale.ROOT, "%02X", byte))
                         }
                     }
                 }

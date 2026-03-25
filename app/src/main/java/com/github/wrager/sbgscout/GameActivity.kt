@@ -67,6 +67,8 @@ import java.io.File
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+// Activity объединяет WebView, drawer, provisioning и обновления — разбивать на части нецелесообразно
+@Suppress("TooManyFunctions")
 class GameActivity : AppCompatActivity() {
 
     private lateinit var rootLayout: FrameLayout
