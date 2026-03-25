@@ -61,10 +61,8 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
         findPreference<Preference>("check_script_updates")?.setOnPreferenceClickListener {
             if (activity is GameActivity) {
-                // В drawer: переходим к менеджеру скриптов, где пользователь
-                // может нажать кнопку проверки обновлений
                 parentFragmentManager.beginTransaction()
-                    .replace(R.id.settingsContainer, ScriptListFragment.newEmbeddedInstance())
+                    .replace(R.id.settingsContainer, ScriptListFragment.newEmbeddedAutoCheckInstance())
                     .addToBackStack(null)
                     .commit()
             } else {

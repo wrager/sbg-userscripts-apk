@@ -88,9 +88,6 @@ class ScriptListFragment : Fragment() {
         savedInstanceState: Bundle?,
     ): View = inflater.inflate(R.layout.fragment_script_list, container, false)
 
-    private val shouldAutoUpdate: Boolean
-        get() = arguments?.getBoolean(ARG_AUTO_UPDATE, false) == true
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setupToolbar(view)
@@ -98,8 +95,9 @@ class ScriptListFragment : Fragment() {
         setupScriptList(view)
         setupButtons(view)
         observeViewModel(view)
-        if (shouldAutoUpdate) {
-            viewModel.checkAndUpdateAll()
+        when {
+            arguments?.getBoolean(ARG_AUTO_UPDATE, false) == true -> viewModel.checkAndUpdateAll()
+            arguments?.getBoolean(ARG_AUTO_CHECK, false) == true -> viewModel.checkUpdates()
         }
     }
 
@@ -355,11 +353,17 @@ class ScriptListFragment : Fragment() {
 
     companion object {
         private const val ARG_EMBEDDED = "embedded"
+        private const val ARG_AUTO_CHECK = "auto_check"
         private const val ARG_AUTO_UPDATE = "auto_update"
 
         /** Создать фрагмент для использования внутри drawer (embedded mode). */
         fun newEmbeddedInstance(): ScriptListFragment = ScriptListFragment().apply {
             arguments = bundleOf(ARG_EMBEDDED to true)
+        }
+
+        /** Создать embedded фрагмент, который автоматически проверит обновления. */
+        fun newEmbeddedAutoCheckInstance(): ScriptListFragment = ScriptListFragment().apply {
+            arguments = bundleOf(ARG_EMBEDDED to true, ARG_AUTO_CHECK to true)
         }
 
         /** Создать embedded фрагмент, который автоматически проверит и обновит все скрипты. */
