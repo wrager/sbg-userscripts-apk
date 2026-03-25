@@ -94,6 +94,10 @@ class GameActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        // Применить тему/язык ДО super.onCreate, чтобы Activity
+        // создалась сразу с правильной конфигурацией (без вспышки)
+        restoreLastAppliedGameSettings(prefs)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_game)
@@ -101,9 +105,7 @@ class GameActivity : AppCompatActivity() {
         webView = findViewById(R.id.gameWebView)
         setupWindowInsets()
 
-        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         applyKeepScreenOn(prefs.getBoolean(KEY_KEEP_SCREEN_ON, true))
-        restoreLastAppliedGameSettings(prefs)
 
         setupWebView()
         setupBackPressHandling()
@@ -127,6 +129,28 @@ class GameActivity : AppCompatActivity() {
     override fun onRestoreInstanceState(savedInstanceState: Bundle) {
         super.onRestoreInstanceState(savedInstanceState)
         webView.restoreState(savedInstanceState)
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // При configChanges Activity не пересоздаётся, поэтому фон окна
+        // (windowBackground) и вью с ?android:colorBackground остаются от старой
+        // конфигурации. Перечитываем актуальные значения из темы.
+        val typedValue = android.util.TypedValue()
+        theme.resolveAttribute(android.R.attr.windowBackground, typedValue, true)
+        window.setBackgroundDrawableResource(typedValue.resourceId)
+        theme.resolveAttribute(android.R.attr.colorBackground, typedValue, true)
+        @Suppress("ResourceType") // colorBackground — цвет, не drawable
+        val backgroundColor = ContextCompat.getColor(this, typedValue.resourceId)
+        findViewById<View>(R.id.settingsContainer)?.setBackgroundColor(backgroundColor)
+
+        // Пересоздать SettingsFragment для применения новой темы/локали.
+        // WebView не затрагивается — он обрабатывает configChanges самостоятельно.
+        if (supportFragmentManager.backStackEntryCount == 0) {
+            supportFragmentManager.beginTransaction()
+                .replace(R.id.settingsContainer, SettingsFragment())
+                .commitAllowingStateLoss()
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -173,23 +197,42 @@ class GameActivity : AppCompatActivity() {
     }
 
     /**
-     * Восстанавливает последние применённые настройки игры из SharedPreferences.
+     * Восстанавливает и применяет последние настройки игры из SharedPreferences.
      *
-     * Необходимо для предотвращения recreation loop:
-     * setDefaultNightMode/setApplicationLocales вызывают recreation Activity,
-     * после чего onPageFinished снова прочитает те же настройки. Без этой
-     * инициализации lastAppliedTheme/lastAppliedLanguage будут null,
-     * и повторное чтение тех же значений вызовет бесконечный цикл recreation.
+     * Вызывается в onCreate до setContentView, чтобы:
+     * 1. Применить тему/язык сразу (без вспышки дефолтной темы)
+     * 2. Инициализировать lastAppliedTheme/lastAppliedLanguage, чтобы повторное
+     *    чтение тех же значений из onPageFinished было no-op
+     *
+     * GameActivity обрабатывает uiMode/locale через configChanges, поэтому
+     * setDefaultNightMode/setApplicationLocales не вызывают recreation.
      */
     private fun restoreLastAppliedGameSettings(prefs: android.content.SharedPreferences) {
         prefs.getString(KEY_APPLIED_GAME_THEME, null)?.let { themeName ->
-            lastAppliedTheme = try {
+            val theme = try {
                 GameSettingsReader.ThemeMode.valueOf(themeName)
             } catch (@Suppress("SwallowedException") _: IllegalArgumentException) {
                 null
             }
+            if (theme != null) {
+                lastAppliedTheme = theme
+                val nightMode = when (theme) {
+                    GameSettingsReader.ThemeMode.AUTO -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                    GameSettingsReader.ThemeMode.DARK -> AppCompatDelegate.MODE_NIGHT_YES
+                    GameSettingsReader.ThemeMode.LIGHT -> AppCompatDelegate.MODE_NIGHT_NO
+                }
+                AppCompatDelegate.setDefaultNightMode(nightMode)
+            }
         }
-        lastAppliedLanguage = prefs.getString(KEY_APPLIED_GAME_LANGUAGE, null)
+        prefs.getString(KEY_APPLIED_GAME_LANGUAGE, null)?.let { language ->
+            lastAppliedLanguage = language
+            val locales = if (language == "sys") {
+                LocaleListCompat.getEmptyLocaleList()
+            } else {
+                LocaleListCompat.forLanguageTags(language)
+            }
+            AppCompatDelegate.setApplicationLocales(locales)
+        }
     }
 
     private fun applyGameSettings(json: String?) {
