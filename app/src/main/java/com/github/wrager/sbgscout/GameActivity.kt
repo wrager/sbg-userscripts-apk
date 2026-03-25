@@ -77,6 +77,15 @@ class GameActivity : AppCompatActivity() {
     private var lastAppliedTheme: GameSettingsReader.ThemeMode? = null
     private var lastAppliedLanguage: String? = null
 
+    /** Применяет настройки немедленно при переключении в UI (без ожидания закрытия drawer). */
+    private val preferenceChangeListener =
+        android.content.SharedPreferences.OnSharedPreferenceChangeListener { prefs, key ->
+            when (key) {
+                KEY_FULLSCREEN_MODE -> applyFullscreen(prefs.getBoolean(key, false))
+                KEY_KEEP_SCREEN_ON -> applyKeepScreenOn(prefs.getBoolean(key, true))
+            }
+        }
+
     // Pending geolocation callback while waiting for Android permission result
     private var pendingGeolocationCallback: GeolocationPermissions.Callback? = null
     private var pendingGeolocationOrigin: String? = null
@@ -111,6 +120,7 @@ class GameActivity : AppCompatActivity() {
         setupWindowInsets()
 
         applyKeepScreenOn(prefs.getBoolean(KEY_KEEP_SCREEN_ON, true))
+        prefs.registerOnSharedPreferenceChangeListener(preferenceChangeListener)
 
         setupWebView()
         setupBackPressHandling()
@@ -169,6 +179,12 @@ class GameActivity : AppCompatActivity() {
                 webView.loadUrl(GAME_URL)
             }
         }
+    }
+
+    override fun onDestroy() {
+        PreferenceManager.getDefaultSharedPreferences(this)
+            .unregisterOnSharedPreferenceChangeListener(preferenceChangeListener)
+        super.onDestroy()
     }
 
     override fun onPause() {
@@ -450,11 +466,9 @@ class GameActivity : AppCompatActivity() {
             .closeDrawer(GravityCompat.START)
     }
 
-    /** Применить настройки, изменённые через drawer (аналог onWindowFocusChanged). */
+    /** Выполнить отложенные действия при закрытии drawer (перезагрузка игры). */
     private fun applySettingsAfterDrawerClose() {
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
-        applyFullscreen(prefs.getBoolean(KEY_FULLSCREEN_MODE, false))
-        applyKeepScreenOn(prefs.getBoolean(KEY_KEEP_SCREEN_ON, true))
         if (prefs.getBoolean(LauncherActivity.KEY_RELOAD_REQUESTED, false)) {
             prefs.edit().remove(LauncherActivity.KEY_RELOAD_REQUESTED).apply()
             webView.loadUrl(GAME_URL)
