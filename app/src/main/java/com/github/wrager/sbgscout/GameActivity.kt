@@ -53,6 +53,7 @@ import com.github.wrager.sbgscout.script.storage.ScriptStorage
 import com.github.wrager.sbgscout.script.storage.ScriptStorageImpl
 import com.github.wrager.sbgscout.script.updater.DefaultHttpFetcher
 import com.github.wrager.sbgscout.script.updater.GithubReleaseProvider
+import com.github.wrager.sbgscout.script.updater.ScriptReleaseNotesProvider
 import com.github.wrager.sbgscout.script.updater.ScriptUpdateChecker
 import com.github.wrager.sbgscout.script.updater.ScriptUpdateResult
 import com.github.wrager.sbgscout.script.installer.BundledScriptInstaller
@@ -680,35 +681,80 @@ class GameActivity : AppCompatActivity() {
             .show()
     }
 
-    /** Проверяет обновления скриптов и возвращает список доступных. */
-    private suspend fun checkScriptUpdates(): List<ScriptUpdateResult.UpdateAvailable> {
+    /**
+     * Проверяет обновления скриптов и загружает release notes для каждого.
+     *
+     * @return пары (обновление, release notes) или пустой список при ошибке
+     */
+    private suspend fun checkScriptUpdates(): List<ScriptUpdateWithNotes> {
         return try {
             val httpFetcher = DefaultHttpFetcher()
             val scriptChecker = ScriptUpdateChecker(httpFetcher, scriptStorage)
             val results = scriptChecker.checkAllForUpdates()
             val available = results.filterIsInstance<ScriptUpdateResult.UpdateAvailable>()
-            if (available.isNotEmpty()) {
-                Log.i(LOG_TAG, "Доступны обновления скриптов: ${available.size}")
-            } else {
+            if (available.isEmpty()) {
                 Log.d(LOG_TAG, "Все скрипты актуальны")
+                return emptyList()
             }
-            available
+            Log.i(LOG_TAG, "Доступны обновления скриптов: ${available.size}")
+
+            val notesProvider = ScriptReleaseNotesProvider(GithubReleaseProvider(httpFetcher))
+            val scripts = scriptStorage.getAll()
+            available.map { update ->
+                val script = scripts.find { it.identifier == update.identifier }
+                val notes = script?.sourceUrl?.let { sourceUrl ->
+                    try {
+                        notesProvider.fetchReleaseNotes(sourceUrl, update.currentVersion)
+                    } catch (@Suppress("TooGenericExceptionCaught") exception: Exception) {
+                        Log.w(LOG_TAG, "Не удалось загрузить release notes для ${update.identifier}", exception)
+                        null
+                    }
+                }
+                ScriptUpdateWithNotes(update, notes)
+            }
         } catch (@Suppress("TooGenericExceptionCaught") exception: Exception) {
             Log.w(LOG_TAG, "Авто-проверка обновлений скриптов: ошибка", exception)
             emptyList()
         }
     }
 
-    private fun showScriptUpdatesDialog(updates: List<ScriptUpdateResult.UpdateAvailable>) {
+    private fun showScriptUpdatesDialog(updates: List<ScriptUpdateWithNotes>) {
         val scripts = scriptStorage.getAll()
-        val details = updates.joinToString("\n") { update ->
-            val name = scripts.find { it.identifier == update.identifier }?.header?.name
-                ?: update.identifier.value
-            "$name ${update.currentVersion.value} \u2192 ${update.latestVersion.value}"
+        val details = buildString {
+            for ((index, item) in updates.withIndex()) {
+                if (index > 0) append("\n\n")
+                val name = scripts.find { it.identifier == item.update.identifier }?.header?.name
+                    ?: item.update.identifier.value
+                append("$name ${item.update.currentVersion.value} \u2192 ${item.update.latestVersion.value}")
+                if (item.releaseNotes != null) {
+                    append("\n")
+                    append(item.releaseNotes)
+                }
+            }
         }
+
+        val density = resources.displayMetrics.density
+        val maxHeightPx = (RELEASE_NOTES_MAX_HEIGHT_DP * density).toInt()
+        val paddingPx = (RELEASE_NOTES_PADDING_DP * density).toInt()
+        val textView = TextView(this).apply {
+            text = details
+            setPadding(paddingPx, paddingPx, paddingPx, paddingPx)
+            setTextIsSelectable(true)
+        }
+        val scrollView = android.widget.ScrollView(this).apply { addView(textView) }
+        val container = object : FrameLayout(this@GameActivity) {
+            override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+                val constrainedHeight = View.MeasureSpec.makeMeasureSpec(
+                    maxHeightPx, View.MeasureSpec.AT_MOST,
+                )
+                super.onMeasure(widthMeasureSpec, constrainedHeight)
+            }
+        }
+        container.addView(scrollView)
+
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.script_updates_available)
-            .setMessage(details)
+            .setView(container)
             .setPositiveButton(R.string.update) { _, _ ->
                 openScriptManagerWithAutoUpdate()
             }
@@ -758,6 +804,11 @@ class GameActivity : AppCompatActivity() {
             },
         )
     }
+
+    private data class ScriptUpdateWithNotes(
+        val update: ScriptUpdateResult.UpdateAvailable,
+        val releaseNotes: String?,
+    )
 
     companion object {
         private const val GAME_URL = "https://sbg-game.ru/app"
