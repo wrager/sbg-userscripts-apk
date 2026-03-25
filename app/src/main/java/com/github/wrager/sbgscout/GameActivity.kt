@@ -685,7 +685,7 @@ class GameActivity : AppCompatActivity() {
             "$name ${update.currentVersion.value} \u2192 ${update.latestVersion.value}"
         }
         MaterialAlertDialogBuilder(this)
-            .setTitle(getString(R.string.script_updates_available, updates.size))
+            .setTitle(R.string.script_updates_available)
             .setMessage(details)
             .setPositiveButton(R.string.update) { _, _ ->
                 openScriptManagerWithAutoUpdate()
