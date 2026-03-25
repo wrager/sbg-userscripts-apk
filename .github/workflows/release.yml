@@ -28,10 +28,10 @@ jobs:
         run: ./gradlew assembleRelease
 
       - name: Rename APK
-        run: mv app/build/outputs/apk/release/*.apk app/build/outputs/apk/release/sbg-scout.apk
+        run: mv app/build/outputs/apk/release/*.apk app/build/outputs/apk/release/sbg-scout-${{ github.ref_name }}.apk
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           body_path: RELEASE_NOTES.md
-          files: app/build/outputs/apk/release/sbg-scout.apk
+          files: app/build/outputs/apk/release/sbg-scout-${{ github.ref_name }}.apk
