@@ -17,6 +17,7 @@ import com.github.wrager.sbgscout.script.injector.InjectionStateStorage
 import com.github.wrager.sbgscout.script.updater.GithubReleaseProvider
 import com.github.wrager.sbgscout.script.updater.ScriptDownloadResult
 import com.github.wrager.sbgscout.script.updater.ScriptDownloader
+import com.github.wrager.sbgscout.script.updater.ScriptReleaseNotesProvider
 import com.github.wrager.sbgscout.script.updater.ScriptUpdateChecker
 import com.github.wrager.sbgscout.script.updater.ScriptUpdateResult
 import kotlinx.coroutines.Job
@@ -231,9 +232,9 @@ class LauncherViewModel(
                     }
                 }
                 refreshScriptList()
-                val availableCount = operationStateMap.values
-                    .count { it is ScriptOperationState.UpdateAvailable }
-                _events.send(LauncherEvent.CheckCompleted(availableCount))
+                val available = results.filterIsInstance<ScriptUpdateResult.UpdateAvailable>()
+                val releaseNotesSummary = fetchReleaseNotesSummary(available)
+                _events.send(LauncherEvent.CheckCompleted(available.size, releaseNotesSummary))
             } catch (@Suppress("TooGenericExceptionCaught") exception: Exception) {
                 operationStateMap.entries.removeAll { (_, state) ->
                     state is ScriptOperationState.CheckingUpdate
@@ -311,6 +312,35 @@ class LauncherViewModel(
             }
             _events.send(LauncherEvent.UpdatesCompleted(updatedCount))
         }
+    }
+
+    /**
+     * Загружает и агрегирует release notes для списка доступных обновлений.
+     *
+     * Формат: "ScriptName 1.0.0 → 2.0.0\n<release notes>\n\nOtherScript ..."
+     * Возвращает null, если обновлений нет или ни у одного нет release notes.
+     */
+    private suspend fun fetchReleaseNotesSummary(
+        updates: List<ScriptUpdateResult.UpdateAvailable>,
+    ): String? {
+        if (updates.isEmpty()) return null
+        val notesProvider = ScriptReleaseNotesProvider(githubReleaseProvider)
+        val scripts = scriptStorage.getAll()
+        val sections = updates.mapNotNull { update ->
+            val script = scripts.find { it.identifier == update.identifier }
+            val name = script?.header?.name ?: update.identifier.value
+            val header = "$name ${update.currentVersion.value} \u2192 ${update.latestVersion.value}"
+            val notes = script?.sourceUrl?.let { sourceUrl ->
+                try {
+                    notesProvider.fetchReleaseNotes(sourceUrl, update.currentVersion)
+                } catch (@Suppress("TooGenericExceptionCaught") exception: Exception) {
+                    Log.w(LOG_TAG, "Не удалось загрузить release notes для ${update.identifier}", exception)
+                    null
+                }
+            }
+            if (notes != null) "$header\n$notes" else header
+        }
+        return sections.joinToString("\n\n").ifEmpty { null }
     }
 
     fun loadVersions(identifier: ScriptIdentifier) {

@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.PopupMenu
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -202,10 +203,7 @@ class ScriptListFragment : Fragment() {
     }
 
     private fun handleEvent(event: LauncherEvent) {
-        if (event is LauncherEvent.VersionsLoaded) {
-            showVersionSelectionDialog(event.identifier, event.versions)
-            return
-        }
+        if (handleSpecialEvent(event)) return
         val message = when (event) {
             is LauncherEvent.ScriptAdded ->
                 getString(R.string.script_added, formatNameWithVersion(event.scriptName, event.scriptVersion))
@@ -242,6 +240,48 @@ class ScriptListFragment : Fragment() {
                 }
         }
         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+    }
+
+    /** Обрабатывает события, требующие отдельного UI (диалоги). Возвращает true, если событие обработано. */
+    private fun handleSpecialEvent(event: LauncherEvent): Boolean = when {
+        event is LauncherEvent.VersionsLoaded -> {
+            showVersionSelectionDialog(event.identifier, event.versions); true
+        }
+        event is LauncherEvent.CheckCompleted && event.releaseNotesSummary != null -> {
+            showUpdateReleaseNotesDialog(event.releaseNotesSummary); true
+        }
+        else -> false
+    }
+
+    /** Показывает диалог с release notes обновлений и кнопкой «Обновить». */
+    private fun showUpdateReleaseNotesDialog(releaseNotes: String) {
+        val context = requireContext()
+        val density = resources.displayMetrics.density
+        val maxHeightPx = (RELEASE_NOTES_MAX_HEIGHT_DP * density).toInt()
+        val paddingPx = (RELEASE_NOTES_PADDING_DP * density).toInt()
+        val textView = TextView(context).apply {
+            text = releaseNotes
+            setPadding(paddingPx, paddingPx, paddingPx, paddingPx)
+            setTextIsSelectable(true)
+        }
+        val scrollView = android.widget.ScrollView(context).apply { addView(textView) }
+        val container = object : FrameLayout(context) {
+            override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+                val constrainedHeight = View.MeasureSpec.makeMeasureSpec(
+                    maxHeightPx, View.MeasureSpec.AT_MOST,
+                )
+                super.onMeasure(widthMeasureSpec, constrainedHeight)
+            }
+        }
+        container.addView(scrollView)
+        MaterialAlertDialogBuilder(context)
+            .setTitle(R.string.script_updates_title)
+            .setView(container)
+            .setPositiveButton(R.string.update_all) { _, _ ->
+                viewModel.checkAndUpdateAll()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun readFileAndInstall(uri: Uri) {
@@ -355,6 +395,8 @@ class ScriptListFragment : Fragment() {
         private const val ARG_EMBEDDED = "embedded"
         private const val ARG_AUTO_CHECK = "auto_check"
         private const val ARG_AUTO_UPDATE = "auto_update"
+        private const val RELEASE_NOTES_MAX_HEIGHT_DP = 200
+        private const val RELEASE_NOTES_PADDING_DP = 24
 
         /** Создать фрагмент для использования внутри drawer (embedded mode). */
         fun newEmbeddedInstance(): ScriptListFragment = ScriptListFragment().apply {
