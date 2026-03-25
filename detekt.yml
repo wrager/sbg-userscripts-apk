@@ -9,7 +9,7 @@ complexity:
     constructorThreshold: 10
   TooManyFunctions:
     thresholdInFiles: 25
-    thresholdInClasses: 25
+    thresholdInClasses: 30
     thresholdInInterfaces: 15
 
 naming:

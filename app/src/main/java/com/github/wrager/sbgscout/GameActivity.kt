@@ -51,11 +51,16 @@ import com.github.wrager.sbgscout.script.storage.ScriptStorage
 import com.github.wrager.sbgscout.script.storage.ScriptStorageImpl
 import com.github.wrager.sbgscout.script.updater.DefaultHttpFetcher
 import com.github.wrager.sbgscout.script.updater.GithubReleaseProvider
+import com.github.wrager.sbgscout.script.updater.ScriptUpdateChecker
+import com.github.wrager.sbgscout.script.updater.ScriptUpdateResult
 import com.github.wrager.sbgscout.script.installer.BundledScriptInstaller
-import com.github.wrager.sbgscout.updater.AppUpdateChecker
-import com.github.wrager.sbgscout.updater.AppUpdateResult
 import com.github.wrager.sbgscout.script.installer.ScriptInstaller
+import com.github.wrager.sbgscout.script.updater.ScriptDownloadResult
 import com.github.wrager.sbgscout.script.updater.ScriptDownloader
+import com.github.wrager.sbgscout.updater.AppUpdateChecker
+import com.github.wrager.sbgscout.updater.AppUpdateInstaller
+import com.github.wrager.sbgscout.updater.AppUpdateResult
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.github.wrager.sbgscout.webview.SbgWebViewClient
 import java.io.File
 import kotlinx.coroutines.delay
@@ -556,7 +561,7 @@ class GameActivity : AppCompatActivity() {
     }
 
     /**
-     * Запускает фоновую проверку обновлений приложения, если:
+     * Запускает фоновую проверку обновлений приложения и скриптов, если:
      * - авто-проверка включена в настройках
      * - прошло больше 24 часов с последней проверки
      */
@@ -567,20 +572,92 @@ class GameActivity : AppCompatActivity() {
         if (now - lastCheck < UPDATE_CHECK_INTERVAL_MS) return
 
         prefs.edit().putLong(KEY_LAST_UPDATE_CHECK, now).apply()
+        val httpFetcher = DefaultHttpFetcher()
         lifecycleScope.launch {
+            // Проверка и предложение обновления приложения
             try {
-                val httpFetcher = DefaultHttpFetcher()
-                val checker = AppUpdateChecker(
+                val appChecker = AppUpdateChecker(
                     GithubReleaseProvider(httpFetcher),
                     BuildConfig.VERSION_NAME,
                 )
-                val result = checker.check()
-                if (result is AppUpdateResult.UpdateAvailable) {
-                    Log.i(LOG_TAG, "Доступно обновление приложения: ${result.tagName}")
+                when (val result = appChecker.check()) {
+                    is AppUpdateResult.UpdateAvailable -> {
+                        Log.i(LOG_TAG, "Доступно обновление приложения: ${result.tagName}")
+                        showAppUpdateDialog(result.tagName, result.downloadUrl, httpFetcher)
+                    }
+                    is AppUpdateResult.UpToDate ->
+                        Log.d(LOG_TAG, "Приложение актуально")
+                    is AppUpdateResult.CheckFailed ->
+                        Log.w(LOG_TAG, "Не удалось проверить обновление приложения", result.error)
                 }
             } catch (@Suppress("TooGenericExceptionCaught") exception: Exception) {
-                Log.w(LOG_TAG, "Авто-проверка обновлений завершилась с ошибкой", exception)
+                Log.w(LOG_TAG, "Авто-проверка обновлений приложения: ошибка", exception)
             }
+            // Проверка и автоматическое обновление скриптов
+            autoUpdateScripts(httpFetcher)
+        }
+    }
+
+    /** Показывает диалог обновления приложения (используется и авто-проверкой, и кнопкой в настройках). */
+    fun showAppUpdateDialog(tagName: String, downloadUrl: String, httpFetcher: DefaultHttpFetcher) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.app_update_available, tagName))
+            .setPositiveButton(R.string.app_update_download) { _, _ ->
+                Toast.makeText(this, R.string.app_update_downloading, Toast.LENGTH_SHORT).show()
+                val installer = AppUpdateInstaller(applicationContext, httpFetcher)
+                lifecycleScope.launch {
+                    try {
+                        installer.downloadAndInstall(downloadUrl)
+                    } catch (@Suppress("TooGenericExceptionCaught") exception: Exception) {
+                        Toast.makeText(
+                            this@GameActivity,
+                            getString(R.string.app_update_download_failed, exception.message),
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private suspend fun autoUpdateScripts(httpFetcher: DefaultHttpFetcher) {
+        try {
+            val scriptChecker = ScriptUpdateChecker(httpFetcher, scriptStorage)
+            val results = scriptChecker.checkAllForUpdates()
+            val available = results.filterIsInstance<ScriptUpdateResult.UpdateAvailable>()
+            if (available.isEmpty()) {
+                Log.d(LOG_TAG, "Все скрипты актуальны")
+                return
+            }
+            Log.i(LOG_TAG, "Обновление скриптов: ${available.size}")
+            val scriptInstaller = ScriptInstaller(scriptStorage)
+            val downloader = ScriptDownloader(httpFetcher, scriptInstaller)
+            // Собираем скрипты с доступными обновлениями и URL для загрузки
+            val scriptsToUpdate = available.mapNotNull { update ->
+                val script = scriptStorage.getAll().find { it.identifier == update.identifier }
+                val downloadUrl = script?.sourceUrl
+                if (script != null && downloadUrl != null) script to downloadUrl else null
+            }
+            var updatedCount = 0
+            for ((script, downloadUrl) in scriptsToUpdate) {
+                val downloadResult = downloader.download(downloadUrl, isPreset = script.isPreset)
+                if (downloadResult is ScriptDownloadResult.Success) {
+                    scriptStorage.setEnabled(downloadResult.script.identifier, script.enabled)
+                    updatedCount++
+                }
+            }
+            if (updatedCount > 0) {
+                runOnUiThread {
+                    Toast.makeText(
+                        this@GameActivity,
+                        getString(R.string.updates_applied, updatedCount),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
+            }
+        } catch (@Suppress("TooGenericExceptionCaught") exception: Exception) {
+            Log.w(LOG_TAG, "Авто-обновление скриптов: ошибка", exception)
         }
     }
 
