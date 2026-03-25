@@ -50,7 +50,10 @@ import com.github.wrager.sbgscout.script.storage.ScriptFileStorageImpl
 import com.github.wrager.sbgscout.script.storage.ScriptStorage
 import com.github.wrager.sbgscout.script.storage.ScriptStorageImpl
 import com.github.wrager.sbgscout.script.updater.DefaultHttpFetcher
+import com.github.wrager.sbgscout.script.updater.GithubReleaseProvider
 import com.github.wrager.sbgscout.script.installer.BundledScriptInstaller
+import com.github.wrager.sbgscout.updater.AppUpdateChecker
+import com.github.wrager.sbgscout.updater.AppUpdateResult
 import com.github.wrager.sbgscout.script.installer.ScriptInstaller
 import com.github.wrager.sbgscout.script.updater.ScriptDownloader
 import com.github.wrager.sbgscout.webview.SbgWebViewClient
@@ -105,6 +108,7 @@ class GameActivity : AppCompatActivity() {
         setupWebView()
         setupBackPressHandling()
         setupSettingsDrawer()
+        scheduleAutoUpdateCheck(prefs)
 
         if (savedInstanceState == null) {
             if (scriptProvisioner.hasPendingScripts()) {
@@ -508,6 +512,35 @@ class GameActivity : AppCompatActivity() {
         webView.loadUrl(GAME_URL)
     }
 
+    /**
+     * Запускает фоновую проверку обновлений приложения, если:
+     * - авто-проверка включена в настройках
+     * - прошло больше 24 часов с последней проверки
+     */
+    private fun scheduleAutoUpdateCheck(prefs: android.content.SharedPreferences) {
+        if (!prefs.getBoolean(KEY_AUTO_CHECK_UPDATES, true)) return
+        val lastCheck = prefs.getLong(KEY_LAST_UPDATE_CHECK, 0)
+        val now = System.currentTimeMillis()
+        if (now - lastCheck < UPDATE_CHECK_INTERVAL_MS) return
+
+        prefs.edit().putLong(KEY_LAST_UPDATE_CHECK, now).apply()
+        lifecycleScope.launch {
+            try {
+                val httpFetcher = DefaultHttpFetcher()
+                val checker = AppUpdateChecker(
+                    GithubReleaseProvider(httpFetcher),
+                    BuildConfig.VERSION_NAME,
+                )
+                val result = checker.check()
+                if (result is AppUpdateResult.UpdateAvailable) {
+                    Log.i(LOG_TAG, "Доступно обновление приложения: ${result.tagName}")
+                }
+            } catch (@Suppress("TooGenericExceptionCaught") exception: Exception) {
+                Log.w(LOG_TAG, "Авто-проверка обновлений завершилась с ошибкой", exception)
+            }
+        }
+    }
+
     private fun setupBackPressHandling() {
         onBackPressedDispatcher.addCallback(
             this,
@@ -554,5 +587,8 @@ class GameActivity : AppCompatActivity() {
         private const val DRAWER_GAP_DIVISOR = 3
         private const val SKIP_BUTTON_CONNECT_DELAY_MS = 2_000L
         private const val SKIP_BUTTON_DOWNLOAD_DELAY_MS = 5_000L
+        private const val KEY_AUTO_CHECK_UPDATES = "auto_check_updates"
+        private const val KEY_LAST_UPDATE_CHECK = "last_update_check"
+        private const val UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000L
     }
 }
