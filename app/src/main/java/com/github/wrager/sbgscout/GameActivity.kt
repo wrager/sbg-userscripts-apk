@@ -3,6 +3,7 @@ package com.github.wrager.sbgscout
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.view.WindowManager
 import android.util.Log
 import android.view.inputmethod.InputMethodManager
 import android.webkit.ConsoleMessage
@@ -90,6 +91,9 @@ class GameActivity : AppCompatActivity() {
         webView = findViewById(R.id.gameWebView)
         setupWindowInsets()
 
+        val prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        applyKeepScreenOn(prefs.getBoolean(KEY_KEEP_SCREEN_ON, true))
+
         setupWebView()
         setupBackPressHandling()
         setupSettingsDrawer()
@@ -118,6 +122,7 @@ class GameActivity : AppCompatActivity() {
         if (hasFocus) {
             val prefs = PreferenceManager.getDefaultSharedPreferences(this)
             applyFullscreen(prefs.getBoolean(KEY_FULLSCREEN_MODE, false))
+            applyKeepScreenOn(prefs.getBoolean(KEY_KEEP_SCREEN_ON, true))
             if (prefs.getBoolean(LauncherActivity.KEY_RELOAD_REQUESTED, false)) {
                 prefs.edit().remove(LauncherActivity.KEY_RELOAD_REQUESTED).apply()
                 webView.loadUrl(GAME_URL)
@@ -152,6 +157,14 @@ class GameActivity : AppCompatActivity() {
                 )
             }
             windowInsets
+        }
+    }
+
+    private fun applyKeepScreenOn(enabled: Boolean) {
+        if (enabled) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 
@@ -323,6 +336,7 @@ class GameActivity : AppCompatActivity() {
     private fun applySettingsAfterDrawerClose() {
         val prefs = PreferenceManager.getDefaultSharedPreferences(this)
         applyFullscreen(prefs.getBoolean(KEY_FULLSCREEN_MODE, false))
+        applyKeepScreenOn(prefs.getBoolean(KEY_KEEP_SCREEN_ON, true))
         if (prefs.getBoolean(LauncherActivity.KEY_RELOAD_REQUESTED, false)) {
             prefs.edit().remove(LauncherActivity.KEY_RELOAD_REQUESTED).apply()
             webView.loadUrl(GAME_URL)
@@ -451,6 +465,7 @@ class GameActivity : AppCompatActivity() {
         private const val GAME_URL = "https://sbg-game.ru/app"
         private const val LOG_TAG = "SbgWebView"
         private const val KEY_FULLSCREEN_MODE = "fullscreen_mode"
+        private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
         private const val PULL_TAB_VERTICAL_POSITION = 0.25f
         private const val DEFAULT_DRAWER_WIDTH_DP = 300f
         private const val DRAWER_GAP_DIVISOR = 3

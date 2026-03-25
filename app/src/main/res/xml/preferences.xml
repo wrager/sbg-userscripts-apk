@@ -13,6 +13,13 @@
             android:title="@string/settings_fullscreen"
             app:iconSpaceReserved="false" />
 
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="keep_screen_on"
+            android:summary="@string/settings_keep_screen_on_summary"
+            android:title="@string/settings_keep_screen_on"
+            app:iconSpaceReserved="false" />
+
     </PreferenceCategory>
 
     <PreferenceCategory

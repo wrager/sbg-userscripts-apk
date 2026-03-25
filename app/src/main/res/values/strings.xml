@@ -49,6 +49,8 @@
     <string name="settings_category_display">Display</string>
     <string name="settings_fullscreen">Fullscreen mode</string>
     <string name="settings_fullscreen_summary">Hide status bar and navigation buttons</string>
+    <string name="settings_keep_screen_on">Keep screen on</string>
+    <string name="settings_keep_screen_on_summary">Prevent screen from turning off while in game</string>
     <string name="settings_category_scripts">Scripts</string>
     <string name="settings_auto_update">Check for updates once a day on game load</string>
     <string name="settings_category_about">About</string>

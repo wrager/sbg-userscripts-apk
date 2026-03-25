@@ -49,6 +49,8 @@
     <string name="settings_category_display">Экран</string>
     <string name="settings_fullscreen">Полноэкранный режим</string>
     <string name="settings_fullscreen_summary">Скрывать статус-бар и кнопки навигации</string>
+    <string name="settings_keep_screen_on">Не гасить экран</string>
+    <string name="settings_keep_screen_on_summary">Не выключать экран во время игры</string>
     <string name="settings_category_scripts">Скрипты</string>
     <string name="settings_auto_update">Проверять обновления раз в день при загрузке игры</string>
     <string name="settings_category_about">О приложении</string>
