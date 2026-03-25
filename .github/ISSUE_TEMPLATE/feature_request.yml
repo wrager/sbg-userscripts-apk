@@ -1,23 +1,32 @@
-name: Запрос фичи
+name: "\U0001F4A1 Запрос фичи"
 description: Предложить новую функциональность
 labels: [enhancement]
 body:
   - type: textarea
     id: description
     attributes:
-      label: Описание
-      description: Что хотелось бы добавить или изменить?
+      label: Описание фичи
+      placeholder: Что именно хотите видеть?
     validations:
       required: true
 
   - type: textarea
-    id: motivation
+    id: usecase
     attributes:
-      label: Мотивация
-      description: Какую проблему это решает?
+      label: Зачем это нужно?
+      description: Опишите ситуацию, в которой эта фича была бы полезна
+      placeholder: "Когда я играю, мне не хватает..."
+    validations:
+      required: true
 
   - type: textarea
     id: alternatives
     attributes:
-      label: Альтернативы
-      description: Рассматривали ли вы другие варианты?
+      label: Рассмотренные альтернативы
+      description: Есть ли обходные пути или другие способы решить эту задачу?
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Дополнительная информация
+      description: Скриншоты, мокапы, ссылки на аналоги в других скриптах/приложениях
