@@ -66,11 +66,14 @@ import com.github.wrager.sbgscout.updater.AppUpdateResult
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.github.wrager.sbgscout.webview.SbgWebViewClient
 import java.io.File
+import androidx.appcompat.app.AlertDialog
+import kotlin.coroutines.cancellation.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 // Activity объединяет WebView, drawer, provisioning и обновления — разбивать на части нецелесообразно
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "LargeClass")
 class GameActivity : AppCompatActivity() {
 
     private lateinit var rootLayout: FrameLayout
@@ -648,77 +651,208 @@ class GameActivity : AppCompatActivity() {
         }
     }
 
-    /** Показывает диалог обновления приложения (используется и авто-проверкой, и кнопкой в настройках). */
+    /**
+     * Показывает диалог обновления приложения с результатом, полученным авто-проверкой.
+     *
+     * Используется [scheduleAutoUpdateCheck], когда обновление уже найдено.
+     * Для ручной проверки из настроек используется [showAppUpdateCheckDialog].
+     */
     fun showAppUpdateDialog(
         downloadUrl: String,
         releaseNotes: String?,
         httpFetcher: DefaultHttpFetcher,
         onDismiss: (() -> Unit)? = null,
     ) {
-        val builder = MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.app_update_available)
-        if (!releaseNotes.isNullOrBlank()) {
-            val density = resources.displayMetrics.density
-            val maxHeightPx = (RELEASE_NOTES_MAX_HEIGHT_DP * density).toInt()
-            val paddingPx = (RELEASE_NOTES_PADDING_DP * density).toInt()
-            val textView = TextView(this).apply {
-                text = releaseNotes.trim()
-                setPadding(paddingPx, paddingPx, paddingPx, paddingPx)
-                setTextIsSelectable(true)
-            }
-            val scrollView = android.widget.ScrollView(this).apply {
-                addView(textView)
-            }
-            // FrameLayout с ограничением максимальной высоты,
-            // чтобы короткие release notes не растягивали диалог
-            val container = object : FrameLayout(this@GameActivity) {
-                override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-                    val constrainedHeight = View.MeasureSpec.makeMeasureSpec(
-                        maxHeightPx, View.MeasureSpec.AT_MOST,
-                    )
-                    super.onMeasure(widthMeasureSpec, constrainedHeight)
-                }
-            }
-            container.addView(scrollView)
-            builder.setView(container)
-        }
-        builder
-            .setPositiveButton(R.string.app_update_download) { _, _ ->
-                showAppDownloadProgressDialog(downloadUrl, httpFetcher)
-            }
-            .setNegativeButton(android.R.string.cancel, null)
-            .setOnDismissListener { onDismiss?.invoke() }
-            .show()
-    }
-
-    private fun showAppDownloadProgressDialog(
-        downloadUrl: String,
-        httpFetcher: DefaultHttpFetcher,
-    ) {
         val density = resources.displayMetrics.density
+        val maxHeightPx = (RELEASE_NOTES_MAX_HEIGHT_DP * density).toInt()
         val paddingPx = (RELEASE_NOTES_PADDING_DP * density).toInt()
+
         val progressIndicator = LinearProgressIndicator(this).apply {
             isIndeterminate = true
-            setPadding(paddingPx, paddingPx, paddingPx, paddingPx)
+            visibility = View.GONE
         }
+        val releaseNotesContainer = FrameLayout(this)
+        val contentLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(paddingPx, paddingPx, paddingPx, paddingPx)
+            addView(progressIndicator)
+            addView(releaseNotesContainer)
+        }
+        if (!releaseNotes.isNullOrBlank()) {
+            addReleaseNotesView(releaseNotesContainer, releaseNotes, maxHeightPx)
+        }
+
+        var activeJob: Job? = null
         val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.app_update_downloading)
-            .setView(progressIndicator)
-            .setCancelable(false)
+            .setTitle(R.string.app_update_available)
+            .setView(contentLayout)
+            .setPositiveButton(R.string.app_update_download, null)
             .setNegativeButton(android.R.string.cancel, null)
-            .show()
+            .setOnDismissListener {
+                activeJob?.cancel()
+                onDismiss?.invoke()
+            }
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                activeJob = startAppDownload(
+                    dialog, progressIndicator, releaseNotesContainer, downloadUrl, httpFetcher,
+                )
+            }
+        }
+        dialog.show()
+    }
+
+    /**
+     * Единый диалог проверки и загрузки обновления приложения.
+     *
+     * Открывается сразу при нажатии «Проверить обновление» в настройках.
+     * Фазы: проверка (indeterminate) → результат / загрузка (determinate) → установка.
+     * Cancel отменяет текущую операцию (проверку или загрузку).
+     */
+    // Метод длинный из-за управления фазами диалога (check → result → download) — дробить нецелесообразно
+    @Suppress("LongMethod")
+    fun showAppUpdateCheckDialog(onDismiss: (() -> Unit)? = null) {
+        val httpFetcher = DefaultHttpFetcher()
+        val density = resources.displayMetrics.density
+        val paddingPx = (RELEASE_NOTES_PADDING_DP * density).toInt()
+        val maxHeightPx = (RELEASE_NOTES_MAX_HEIGHT_DP * density).toInt()
+
+        val progressIndicator = LinearProgressIndicator(this).apply {
+            isIndeterminate = true
+        }
+        val releaseNotesContainer = FrameLayout(this)
+        val contentLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(paddingPx, paddingPx, paddingPx, paddingPx)
+            addView(progressIndicator)
+            addView(releaseNotesContainer)
+        }
+
+        var activeJob: Job? = null
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.app_update_checking)
+            .setView(contentLayout)
+            .setPositiveButton(R.string.app_update_download, null)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setOnDismissListener {
+                activeJob?.cancel()
+                onDismiss?.invoke()
+            }
+            .create()
+
+        dialog.setOnShowListener {
+            val downloadButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+            downloadButton.visibility = View.GONE
+
+            activeJob = lifecycleScope.launch {
+                try {
+                    val checker = AppUpdateChecker(
+                        GithubReleaseProvider(httpFetcher),
+                        BuildConfig.VERSION_NAME,
+                    )
+                    when (val result = checker.check()) {
+                        is AppUpdateResult.UpdateAvailable -> {
+                            progressIndicator.visibility = View.GONE
+                            dialog.setTitle(getString(R.string.app_update_available))
+                            if (!result.releaseNotes.isNullOrBlank()) {
+                                addReleaseNotesView(
+                                    releaseNotesContainer, result.releaseNotes, maxHeightPx,
+                                )
+                            }
+                            downloadButton.visibility = View.VISIBLE
+                            downloadButton.setOnClickListener {
+                                activeJob = startAppDownload(
+                                    dialog, progressIndicator, releaseNotesContainer,
+                                    result.downloadUrl, httpFetcher,
+                                )
+                            }
+                        }
+                        is AppUpdateResult.UpToDate -> {
+                            progressIndicator.visibility = View.GONE
+                            dialog.setTitle(getString(R.string.app_up_to_date))
+                        }
+                        is AppUpdateResult.CheckFailed -> {
+                            progressIndicator.visibility = View.GONE
+                            dialog.setTitle(getString(R.string.app_update_check_failed))
+                        }
+                    }
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (@Suppress("TooGenericExceptionCaught") exception: Exception) {
+                    Log.w(LOG_TAG, "Не удалось проверить обновление приложения", exception)
+                    progressIndicator.visibility = View.GONE
+                    dialog.setTitle(getString(R.string.app_update_check_failed))
+                }
+            }
+        }
+        dialog.show()
+    }
+
+    private fun addReleaseNotesView(
+        container: FrameLayout,
+        releaseNotes: String,
+        maxHeightPx: Int,
+    ) {
+        val textView = TextView(this).apply {
+            text = releaseNotes.trim()
+            setTextIsSelectable(true)
+        }
+        val scrollView = android.widget.ScrollView(this).apply {
+            addView(textView)
+        }
+        // FrameLayout с ограничением максимальной высоты,
+        // чтобы короткие release notes не растягивали диалог
+        val heightLimitedContainer = object : FrameLayout(this@GameActivity) {
+            override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+                val constrainedHeight = View.MeasureSpec.makeMeasureSpec(
+                    maxHeightPx, View.MeasureSpec.AT_MOST,
+                )
+                super.onMeasure(widthMeasureSpec, constrainedHeight)
+            }
+        }
+        heightLimitedContainer.addView(scrollView)
+        container.addView(heightLimitedContainer)
+    }
+
+    /**
+     * Запускает загрузку APK внутри уже открытого диалога.
+     *
+     * Переключает диалог в режим загрузки: скрывает release notes и кнопку Download,
+     * показывает прогресс-бар. Возвращает [Job] для отмены через Cancel.
+     */
+    private fun startAppDownload(
+        dialog: AlertDialog,
+        progressIndicator: LinearProgressIndicator,
+        releaseNotesContainer: FrameLayout,
+        downloadUrl: String,
+        httpFetcher: DefaultHttpFetcher,
+    ): Job {
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).visibility = View.GONE
+        releaseNotesContainer.removeAllViews()
+        progressIndicator.isIndeterminate = true
+        progressIndicator.visibility = View.VISIBLE
+        dialog.setTitle(getString(R.string.app_update_downloading))
+
         val installer = AppUpdateInstaller(applicationContext, httpFetcher)
-        lifecycleScope.launch {
+        return lifecycleScope.launch {
             try {
+                var switchedToDeterminate = false
                 installer.downloadAndInstall(downloadUrl) { progress ->
                     runOnUiThread {
-                        if (progress > 0) {
-                            progressIndicator.isIndeterminate = false
-                            progressIndicator.progress = progress
+                        if (progress > 0 && !switchedToDeterminate) {
+                            switchedToDeterminate = true
+                            // setProgressCompat корректно переключает indeterminate → determinate
+                            progressIndicator.setProgressCompat(progress, true)
+                        } else if (switchedToDeterminate) {
+                            progressIndicator.setProgressCompat(progress, true)
                         }
                     }
                 }
                 dialog.dismiss()
+            } catch (exception: CancellationException) {
+                throw exception
             } catch (@Suppress("TooGenericExceptionCaught") exception: Exception) {
                 dialog.dismiss()
                 Toast.makeText(

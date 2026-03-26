@@ -118,6 +118,11 @@ class SettingsFragment : PreferenceFragmentCompat() {
     }
 
     private fun checkAppUpdate() {
+        if (activity is GameActivity) {
+            (activity as GameActivity).showAppUpdateCheckDialog()
+            return
+        }
+        // Fallback для контекста без GameActivity
         val httpFetcher = DefaultHttpFetcher()
         val githubReleaseProvider = GithubReleaseProvider(httpFetcher)
         val checker = AppUpdateChecker(githubReleaseProvider, BuildConfig.VERSION_NAME)
@@ -141,19 +146,13 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
     private fun showUpdateDialog(result: AppUpdateResult.UpdateAvailable, httpFetcher: DefaultHttpFetcher) {
         if (!isAdded) return
-        if (activity is GameActivity) {
-            (activity as GameActivity).showAppUpdateDialog(
-                result.downloadUrl, result.releaseNotes, httpFetcher,
-            )
-        } else {
-            MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.app_update_available)
-                .setPositiveButton(R.string.app_update_download) { _, _ ->
-                    downloadUpdate(result.downloadUrl, httpFetcher)
-                }
-                .setNegativeButton(android.R.string.cancel, null)
-                .show()
-        }
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.app_update_available)
+            .setPositiveButton(R.string.app_update_download) { _, _ ->
+                downloadUpdate(result.downloadUrl, httpFetcher)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun downloadUpdate(downloadUrl: String, httpFetcher: DefaultHttpFetcher) {
