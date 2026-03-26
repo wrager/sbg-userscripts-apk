@@ -790,6 +790,89 @@ class LauncherViewModelTest {
         verify { scriptProvisioner.markProvisioned(PresetScripts.SVP.identifier) }
     }
 
+    @Test
+    fun `addScriptFromContent cleans up old preset entry when identifier changes`() = runTest {
+        val oldSvp = testScript(
+            identifier = ScriptIdentifier("github.com/wrager/sbg-vanilla-plus/Old SVP Name"),
+            name = "Old SVP Name",
+            sourceUrl = PresetScripts.SVP.downloadUrl,
+            isPreset = true,
+            enabled = true,
+        )
+        every { scriptStorage.getAll() } returns listOf(oldSvp)
+        every { scriptStorage.delete(any()) } just Runs
+        every { scriptStorage.setEnabled(any(), any()) } just Runs
+
+        val parsedScript = testScript(
+            identifier = ScriptIdentifier("github.com/wrager/sbg-vanilla-plus/SBG Vanilla+"),
+            name = "SBG Vanilla+",
+            sourceUrl = null,
+        )
+        every { scriptInstaller.parse(any()) } returns ScriptInstallResult.Parsed(parsedScript)
+        every { scriptInstaller.save(any()) } answers {
+            val saved = arg<UserScript>(0)
+            every { scriptStorage.getAll() } returns listOf(saved)
+        }
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.addScriptFromContent("script content")
+        advanceUntilIdle()
+
+        verify { scriptStorage.delete(oldSvp.identifier) }
+        verify { scriptInstaller.save(match { it.isPreset }) }
+    }
+
+    @Test
+    fun `file-imported script appears in UI list`() = runTest {
+        every { scriptStorage.getAll() } returns emptyList()
+        val parsedScript = testScript(
+            identifier = ScriptIdentifier("example.com/My Script"),
+            name = "My Script",
+        )
+        every { scriptInstaller.parse("script content") } returns
+            ScriptInstallResult.Parsed(parsedScript)
+        every { scriptInstaller.save(any()) } answers {
+            every { scriptStorage.getAll() } returns listOf(parsedScript)
+        }
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.addScriptFromContent("script content")
+        advanceUntilIdle()
+
+        val scripts = viewModel.uiState.value.scripts
+        val customScript = scripts.find { it.identifier == parsedScript.identifier }
+        assertTrue(
+            "File-imported script should be in the UI list",
+            customScript != null && customScript.isDownloaded,
+        )
+    }
+
+    @Test
+    fun `orphaned preset script appears in custom section`() = runTest {
+        // Скрипт с isPreset=true, но sourceUrl не совпадает ни с одним пресетом
+        val orphanedScript = testScript(
+            identifier = ScriptIdentifier("github.com/someone/some-script/Script"),
+            name = "Orphaned Preset Script",
+            sourceUrl = "https://example.com/unmatched.user.js",
+            isPreset = true,
+        )
+        every { scriptStorage.getAll() } returns listOf(orphanedScript)
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        val scripts = viewModel.uiState.value.scripts
+        val found = scripts.find { it.identifier == orphanedScript.identifier }
+        assertTrue(
+            "Orphaned preset script should still be visible in the UI list",
+            found != null && found.isDownloaded,
+        )
+    }
+
     private fun createViewModel() = LauncherViewModel(
         scriptStorage,
         conflictDetector,

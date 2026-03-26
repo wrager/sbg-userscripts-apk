@@ -159,6 +159,9 @@ class LauncherViewModel(
                     } else {
                         parseResult.script
                     }
+                    if (matchingPreset != null) {
+                        cleanupExistingPresetScript(matchingPreset, script)
+                    }
                     scriptInstaller.save(script)
                     if (matchingPreset != null) {
                         if (matchingPreset.enabledByDefault) {
@@ -476,6 +479,24 @@ class LauncherViewModel(
     }
 
     /**
+     * Удаляет существующий скрипт того же пресета, если его идентификатор отличается.
+     *
+     * При импорте из файла @name/@namespace могут отличаться от ранее загруженного
+     * скрипта, из-за чего идентификатор меняется. Без очистки старая запись остаётся
+     * в хранилище: preset loop находит только одну из двух, а вторая выпадает из
+     * обоих списков (отфильтрована по isPreset из customItems, не подхвачена в presetItems).
+     */
+    private fun cleanupExistingPresetScript(preset: PresetScript, newScript: UserScript) {
+        val existing = scriptStorage.getAll().find { stored ->
+            stored.identifier != newScript.identifier &&
+                (stored.identifier == preset.identifier ||
+                    (stored.isPreset && stored.sourceUrl == preset.downloadUrl))
+        } ?: return
+        scriptStorage.delete(existing.identifier)
+        operationStateMap.remove(existing.identifier)
+    }
+
+    /**
      * Если идентификатор скрипта изменился после загрузки новой версии
      * (например, изменился @name или @namespace в заголовке),
      * удаляет старую запись из хранилища и состояния операции.
@@ -505,10 +526,12 @@ class LauncherViewModel(
             .toSet()
         val nameByIdentifier = storedScripts.associate { resolvePresetIdentifier(it) to it.header.name }
 
+        val presetClaimedIdentifiers = mutableSetOf<ScriptIdentifier>()
         val presetItems = PresetScripts.ALL.map { preset ->
             val script = storedScripts.find { it.identifier == preset.identifier }
                 ?: storedScripts.find { it.isPreset && it.sourceUrl == preset.downloadUrl }
             if (script != null) {
+                presetClaimedIdentifiers.add(script.identifier)
                 buildScriptUiItem(script, canonicalEnabledIdentifiers, nameByIdentifier)
             } else {
                 ScriptUiItem(
@@ -528,7 +551,7 @@ class LauncherViewModel(
         }
 
         val customItems = storedScripts
-            .filter { !it.isPreset }
+            .filter { it.identifier !in presetClaimedIdentifiers }
             .map { buildScriptUiItem(it, canonicalEnabledIdentifiers, nameByIdentifier) }
 
         val currentEnabledSnapshot = storedScripts
