@@ -31,7 +31,7 @@ class BugReportCollectorTest {
         every { consoleLogBuffer.format() } returns ""
         val collector = BugReportCollector("0.11.0", consoleLogBuffer)
 
-        val report = collector.collect(emptyList(), testDevice)
+        val report = collector.collect(emptyList(), injectedSnapshot = null, testDevice)
 
         assertTrue(report.clipboardText.contains("SBG Scout v0.11.0"))
         assertTrue(report.clipboardText.contains("Android 14 (API 34)"))
@@ -40,19 +40,79 @@ class BugReportCollectorTest {
     }
 
     @Test
-    fun `clipboard text contains enabled scripts`() {
+    fun `clipboard text contains injected scripts with checkmark`() {
         every { consoleLogBuffer.format() } returns ""
         val collector = BugReportCollector("0.11.0", consoleLogBuffer)
         val scripts = listOf(
             userScript("SVP", "0.6.0"),
             userScript("EUI", "1.2.0"),
         )
+        val snapshot = setOf("test/SVP::0.6.0", "test/EUI::1.2.0")
 
-        val report = collector.collect(scripts, testDevice)
+        val report = collector.collect(scripts, snapshot, testDevice)
 
         assertTrue(report.clipboardText.contains("Скрипты:"))
-        assertTrue(report.clipboardText.contains("- SVP v0.6.0"))
-        assertTrue(report.clipboardText.contains("- EUI v1.2.0"))
+        assertTrue(report.clipboardText.contains("✅ SVP v0.6.0"))
+        assertTrue(report.clipboardText.contains("✅ EUI v1.2.0"))
+    }
+
+    @Test
+    fun `disabled script shows empty checkbox`() {
+        every { consoleLogBuffer.format() } returns ""
+        val collector = BugReportCollector("0.11.0", consoleLogBuffer)
+        val scripts = listOf(userScript("CUI", "0.8.0", enabled = false))
+        val snapshot = emptySet<String>()
+
+        val report = collector.collect(scripts, snapshot, testDevice)
+
+        assertTrue(report.clipboardText.contains("⬜ CUI v0.8.0"))
+    }
+
+    @Test
+    fun `enabled but not injected script shows pending marker`() {
+        every { consoleLogBuffer.format() } returns ""
+        val collector = BugReportCollector("0.11.0", consoleLogBuffer)
+        val scripts = listOf(userScript("SVP", "0.6.0"))
+        // Снапшот пуст — скрипт включён, но не инжектирован
+        val snapshot = emptySet<String>()
+
+        val report = collector.collect(scripts, snapshot, testDevice)
+
+        assertTrue(report.clipboardText.contains("⏳ SVP v0.6.0"))
+    }
+
+    @Test
+    fun `all three script states shown correctly`() {
+        every { consoleLogBuffer.format() } returns ""
+        val collector = BugReportCollector("0.11.0", consoleLogBuffer)
+        val scripts = listOf(
+            userScript("SVP", "0.6.0"),
+            userScript("EUI", "1.2.0"),
+            userScript("CUI", "0.8.0", enabled = false),
+        )
+        // Только SVP в снапшоте — EUI включён, но не применён
+        val snapshot = setOf("test/SVP::0.6.0")
+
+        val report = collector.collect(scripts, snapshot, testDevice)
+
+        assertTrue(report.clipboardText.contains("✅ SVP v0.6.0"))
+        assertTrue(report.clipboardText.contains("⏳ EUI v1.2.0"))
+        assertTrue(report.clipboardText.contains("⬜ CUI v0.8.0"))
+    }
+
+    @Test
+    fun `null snapshot marks all enabled scripts as pending`() {
+        every { consoleLogBuffer.format() } returns ""
+        val collector = BugReportCollector("0.11.0", consoleLogBuffer)
+        val scripts = listOf(
+            userScript("SVP", "0.6.0"),
+            userScript("CUI", "0.8.0", enabled = false),
+        )
+
+        val report = collector.collect(scripts, injectedSnapshot = null, testDevice)
+
+        assertTrue(report.clipboardText.contains("⏳ SVP v0.6.0"))
+        assertTrue(report.clipboardText.contains("⬜ CUI v0.8.0"))
     }
 
     @Test
@@ -60,7 +120,7 @@ class BugReportCollectorTest {
         every { consoleLogBuffer.format() } returns "[2025-01-01T00:00:00Z] [error] TypeError: null"
         val collector = BugReportCollector("0.11.0", consoleLogBuffer)
 
-        val report = collector.collect(emptyList(), testDevice)
+        val report = collector.collect(emptyList(), injectedSnapshot = null, testDevice)
 
         assertTrue(report.clipboardText.contains("Лог консоли:"))
         assertTrue(report.clipboardText.contains("[error] TypeError: null"))
@@ -71,7 +131,7 @@ class BugReportCollectorTest {
         every { consoleLogBuffer.format() } returns ""
         val collector = BugReportCollector("0.11.0", consoleLogBuffer)
 
-        val report = collector.collect(emptyList(), testDevice)
+        val report = collector.collect(emptyList(), injectedSnapshot = null, testDevice)
 
         assertTrue("Скрипты:" !in report.clipboardText)
         assertTrue("Лог консоли:" !in report.clipboardText)
@@ -83,7 +143,7 @@ class BugReportCollectorTest {
         val collector = BugReportCollector("0.11.0", consoleLogBuffer)
         val deviceWithoutWebView = testDevice.copy(webViewVersion = null)
 
-        val report = collector.collect(emptyList(), deviceWithoutWebView)
+        val report = collector.collect(emptyList(), injectedSnapshot = null, deviceWithoutWebView)
 
         assertTrue("WebView:" !in report.clipboardText)
     }
@@ -93,7 +153,7 @@ class BugReportCollectorTest {
         every { consoleLogBuffer.format() } returns ""
         val collector = BugReportCollector("0.11.0", consoleLogBuffer)
 
-        val report = collector.collect(emptyList(), testDevice)
+        val report = collector.collect(emptyList(), injectedSnapshot = null, testDevice)
 
         assertTrue(report.issueUrl.startsWith("https://github.com/wrager/sbg-scout/issues/new?"))
         assertTrue(report.issueUrl.contains("template=bug_report.yml"))
@@ -105,7 +165,7 @@ class BugReportCollectorTest {
         every { consoleLogBuffer.format() } returns ""
         val collector = BugReportCollector("0.11.0", consoleLogBuffer)
 
-        val report = collector.collect(emptyList(), testDevice)
+        val report = collector.collect(emptyList(), injectedSnapshot = null, testDevice)
 
         // android-version=14 (API 34) (WebView 120.0.6099.144) — URL-encoded
         assertTrue(report.issueUrl.contains("android-version=14%20"))
@@ -117,7 +177,7 @@ class BugReportCollectorTest {
         every { consoleLogBuffer.format() } returns ""
         val collector = BugReportCollector("0.11.0", consoleLogBuffer)
 
-        val report = collector.collect(emptyList(), testDevice)
+        val report = collector.collect(emptyList(), injectedSnapshot = null, testDevice)
 
         assertTrue(report.issueUrl.contains("device=Google%20Pixel%207"))
     }
@@ -127,8 +187,9 @@ class BugReportCollectorTest {
         every { consoleLogBuffer.format() } returns ""
         val collector = BugReportCollector("0.11.0", consoleLogBuffer)
         val scripts = listOf(userScript("SVP", "0.6.0"))
+        val snapshot = setOf("test/SVP::0.6.0")
 
-        val report = collector.collect(scripts, testDevice)
+        val report = collector.collect(scripts, snapshot, testDevice)
 
         assertTrue(report.issueUrl.contains("scripts="))
     }
@@ -138,7 +199,7 @@ class BugReportCollectorTest {
         every { consoleLogBuffer.format() } returns ""
         val collector = BugReportCollector("0.11.0", consoleLogBuffer)
 
-        val report = collector.collect(emptyList(), testDevice)
+        val report = collector.collect(emptyList(), injectedSnapshot = null, testDevice)
 
         assertTrue("scripts=" !in report.issueUrl)
     }
@@ -147,7 +208,7 @@ class BugReportCollectorTest {
     fun `works without console log buffer`() {
         val collector = BugReportCollector("0.11.0", consoleLogBuffer = null)
 
-        val report = collector.collect(emptyList(), testDevice)
+        val report = collector.collect(emptyList(), injectedSnapshot = null, testDevice)
 
         assertTrue(report.clipboardText.contains("SBG Scout v0.11.0"))
         assertTrue("Лог консоли:" !in report.clipboardText)
@@ -175,19 +236,24 @@ class BugReportCollectorTest {
         every { consoleLogBuffer.format() } returns ""
         val collector = BugReportCollector("0.11.0", consoleLogBuffer)
         val scripts = listOf(userScript("Custom Script", null))
+        val snapshot = setOf("test/Custom Script::")
 
-        val report = collector.collect(scripts, testDevice)
+        val report = collector.collect(scripts, snapshot, testDevice)
 
-        assertTrue(report.clipboardText.contains("- Custom Script"))
-        assertTrue("- Custom Script v" !in report.clipboardText)
+        assertTrue(report.clipboardText.contains("✅ Custom Script"))
+        assertTrue("✅ Custom Script v" !in report.clipboardText)
     }
 
-    private fun userScript(name: String, version: String?): UserScript = UserScript(
+    private fun userScript(
+        name: String,
+        version: String?,
+        enabled: Boolean = true,
+    ): UserScript = UserScript(
         identifier = ScriptIdentifier("test/$name"),
         header = ScriptHeader(name = name, version = version),
         sourceUrl = null,
         updateUrl = null,
         content = "",
-        enabled = true,
+        enabled = enabled,
     )
 }

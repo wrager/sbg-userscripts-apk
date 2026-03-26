@@ -7,7 +7,7 @@ import com.github.wrager.sbgscout.script.model.UserScript
 /**
  * Собирает диагностическую информацию для баг-репорта:
  * - устройство, версия Android, версия WebView
- * - версия APK, список включённых скриптов с версиями
+ * - версия APK, список скриптов с версиями и статусом инжекции
  * - лог ошибок JS-консоли
  *
  * Формирует текст для буфера обмена и URL для создания issue на GitHub.
@@ -50,14 +50,17 @@ class BugReportCollector(
     /**
      * Собирает диагностику и формирует отчёт.
      *
-     * @param enabledScripts список включённых скриптов
+     * @param allScripts все установленные скрипты (включённые и выключенные)
+     * @param injectedSnapshot снапшот инжектированных скриптов из [InjectionStateStorage]:
+     *   null — игра ни разу не загружалась, emptySet — загружалась без скриптов
      * @param deviceInfo информация об устройстве (по умолчанию — текущее устройство)
      */
     fun collect(
-        enabledScripts: List<UserScript>,
+        allScripts: List<UserScript>,
+        injectedSnapshot: Set<String>?,
         deviceInfo: DeviceInfo = DeviceInfo.current(),
     ): DiagnosticReport {
-        val scriptsText = formatScripts(enabledScripts)
+        val scriptsText = formatScripts(allScripts, injectedSnapshot)
         val consoleLog = consoleLogBuffer?.format().orEmpty()
 
         val clipboardText = buildClipboardText(deviceInfo, scriptsText, consoleLog)
@@ -66,11 +69,24 @@ class BugReportCollector(
         return DiagnosticReport(clipboardText = clipboardText, issueUrl = issueUrl)
     }
 
-    private fun formatScripts(scripts: List<UserScript>): String {
+    /**
+     * Форматирует список скриптов с маркерами статуса:
+     * - ✅ — скрипт реально инжектирован в текущую сессию
+     * - ⏳ — включён в настройках, но ещё не применён (игра не перезагружена)
+     * - ⬜ — выключен
+     */
+    private fun formatScripts(scripts: List<UserScript>, injectedSnapshot: Set<String>?): String {
         if (scripts.isEmpty()) return ""
         return scripts.joinToString("\n") { script ->
             val version = script.header.version?.let { " v$it" }.orEmpty()
-            "- ${script.header.name}$version"
+            val snapshotEntry = "${script.identifier.value}::${script.header.version ?: ""}"
+            val marker = when {
+                !script.enabled -> "⬜"
+                injectedSnapshot == null -> "⏳"
+                snapshotEntry in injectedSnapshot -> "✅"
+                else -> "⏳"
+            }
+            "$marker ${script.header.name}$version"
         }
     }
 

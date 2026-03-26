@@ -1,39 +1,20 @@
-name: Баг-репорт
+name: "\U0001F41B Баг-репорт"
 description: Сообщить об ошибке в приложении
 labels: [bug]
 body:
   - type: textarea
-    id: description
+    id: diagnostics
     attributes:
-      label: Описание
-      description: Что произошло?
-    validations:
-      required: true
-
-  - type: textarea
-    id: steps
-    attributes:
-      label: Шаги воспроизведения
-      description: Как воспроизвести проблему?
-      placeholder: |
-        1. Открыть приложение
-        2. ...
-    validations:
-      required: true
-
-  - type: textarea
-    id: expected
-    attributes:
-      label: Ожидаемое поведение
-      description: Что должно было произойти?
-    validations:
-      required: true
+      label: Диагностика
+      description: Вставьте из буфера обмена (Ctrl+V) — данные копируются автоматически при нажатии «Сообщить об ошибке» в настройках
+      render: text
+      placeholder: (вставьте скопированные данные диагностики)
 
   - type: input
     id: apk-version
     attributes:
       label: Версия APK
-      placeholder: "0.11.0"
+      placeholder: "0.12.0"
     validations:
       required: true
 
@@ -54,21 +35,43 @@ body:
   - type: textarea
     id: scripts
     attributes:
-      label: Включённые скрипты
-      description: Какие юзерскрипты были активны? (автоматически заполняется из приложения)
+      label: Скрипты
+      description: Список скриптов и их статус (заполняется автоматически при создании через кнопку в настройках)
       placeholder: |
-        - SVP v0.6.0
-        - EUI v1.2.0
+        ✅ SVP v0.6.0
+        ⏳ EUI v1.2.0
+        ⬜ CUI v0.8.0
+    validations:
+      required: true
 
   - type: textarea
-    id: diagnostics
+    id: steps
     attributes:
-      label: Диагностика
-      description: Вставьте диагностику из буфера обмена (скопирована автоматически при нажатии «Сообщить об ошибке»)
-      render: text
+      label: Шаги воспроизведения
+      placeholder: |
+        1. Открыть приложение
+        2. ...
+    validations:
+      required: true
 
   - type: textarea
-    id: screenshots
+    id: expected
     attributes:
-      label: Скриншоты
-      description: Скриншоты, если есть
+      label: Ожидаемое поведение
+      placeholder: Что должно было произойти?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Фактическое поведение
+      placeholder: Что произошло на самом деле?
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Дополнительная информация
+      description: Скриншоты, видео, любой дополнительный контекст

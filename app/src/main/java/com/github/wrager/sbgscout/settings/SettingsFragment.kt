@@ -88,16 +88,18 @@ class SettingsFragment : PreferenceFragmentCompat() {
     /**
      * Собирает диагностику, копирует в буфер обмена, показывает Toast и открывает GitHub Issues.
      *
-     * В контексте GameActivity доступен лог консоли и список включённых скриптов.
-     * В контексте SettingsActivity (без WebView) — только информация об устройстве и скриптах.
+     * В контексте GameActivity доступен лог консоли, все скрипты и снапшот инжекции.
+     * В контексте SettingsActivity (без WebView) — только информация об устройстве и скриптах
+     * (снапшот инжекции недоступен, все enabled-скрипты помечаются как ⏳).
      */
     private fun reportBug() {
         val gameActivity = activity as? GameActivity
         val consoleLogBuffer = gameActivity?.consoleLogBuffer
-        val enabledScripts = gameActivity?.getEnabledScripts() ?: getEnabledScriptsFromStorage()
+        val allScripts = gameActivity?.getAllScripts() ?: getAllScriptsFromStorage()
+        val injectedSnapshot = gameActivity?.getInjectedSnapshot()
 
         val collector = BugReportCollector(BuildConfig.VERSION_NAME, consoleLogBuffer)
-        val report = collector.collect(enabledScripts)
+        val report = collector.collect(allScripts, injectedSnapshot)
 
         val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboard.setPrimaryClip(ClipData.newPlainText("SBG Scout diagnostics", report.clipboardText))
@@ -106,13 +108,13 @@ class SettingsFragment : PreferenceFragmentCompat() {
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(report.issueUrl)))
     }
 
-    /** Получает список включённых скриптов напрямую из хранилища (для контекста без GameActivity). */
-    private fun getEnabledScriptsFromStorage(): List<UserScript> {
+    /** Получает все установленные скрипты напрямую из хранилища (для контекста без GameActivity). */
+    private fun getAllScriptsFromStorage(): List<UserScript> {
         val context = requireContext()
         val preferences = context.getSharedPreferences("scripts", Context.MODE_PRIVATE)
         val fileStorage = ScriptFileStorageImpl(File(context.filesDir, "scripts"))
         val storage = ScriptStorageImpl(preferences, fileStorage)
-        return storage.getEnabled()
+        return storage.getAll()
     }
 
     private fun checkAppUpdate() {

@@ -78,6 +78,7 @@ class GameActivity : AppCompatActivity() {
     private lateinit var scriptStorage: ScriptStorage
     val consoleLogBuffer = ConsoleLogBuffer()
     private lateinit var scriptProvisioner: DefaultScriptProvisioner
+    private var injectionStateStorage: InjectionStateStorage? = null
     private var isFullscreen = false
     private val gameSettingsReader = GameSettingsReader()
     private var lastAppliedTheme: GameSettingsReader.ThemeMode? = null
@@ -354,7 +355,7 @@ class GameActivity : AppCompatActivity() {
             scriptInstaller, scriptStorage, scriptProvisioner,
             assetReader = { path -> assets.open(path).bufferedReader().readText() },
         ).installBundled()
-        val injectionStateStorage = InjectionStateStorage(preferences)
+        injectionStateStorage = InjectionStateStorage(preferences)
         val scriptInjector = ScriptInjector(
             scriptStorage = scriptStorage,
             applicationId = BuildConfig.APPLICATION_ID,
@@ -469,6 +470,12 @@ class GameActivity : AppCompatActivity() {
 
     /** Список включённых скриптов (для диагностики баг-репортов). */
     fun getEnabledScripts() = scriptStorage.getEnabled()
+
+    /** Все установленные скрипты (для баг-репорта — показать с маркерами статуса). */
+    fun getAllScripts() = scriptStorage.getAll()
+
+    /** Снапшот скриптов, инжектированных при последней загрузке страницы. */
+    fun getInjectedSnapshot() = injectionStateStorage?.getSnapshot()
 
     /** Закрыть drawer настроек (вызывается из фрагментов внутри drawer). */
     fun closeSettingsDrawer() {
